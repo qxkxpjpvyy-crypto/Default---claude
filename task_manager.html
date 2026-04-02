@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>업무 할 일 관리</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+    font-family: 'Malgun Gothic', '맑은 고딕', Arial, sans-serif;
+    font-size: 13px;
+    background: #ecf0f5;
+    padding: 18px;
+    min-height: 100vh;
+    color: #1a1a1a;
+}
+
+.wrap { max-width: 1560px; margin: 0 auto; }
+
+/* ── 헤더 ── */
+.header {
+    background: #1a3a5c;
+    color: white;
+    padding: 14px 22px;
+    border-radius: 6px 6px 0 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+.header h1 { font-size: 17px; font-weight: bold; letter-spacing: 0.5px; }
+.header .sub { font-size: 11px; opacity: 0.65; margin-top: 3px; }
+.header .date-badge {
+    background: rgba(255,255,255,0.15);
+    border-radius: 4px;
+    padding: 5px 12px;
+    font-size: 12px;
+    letter-spacing: 0.5px;
+}
+
+/* ── 컨트롤 바 ── */
+.ctrl {
+    background: #254e7a;
+    padding: 9px 22px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    border-top: 1px solid rgba(255,255,255,0.1);
+}
+.ctrl label { color: #d6e4f0; font-weight: bold; font-size: 12px; white-space: nowrap; }
+.ctrl input[type="date"] {
+    padding: 5px 8px;
+    border: 1px solid #a0b4c8;
+    border-radius: 4px;
+    font-size: 13px;
+    font-family: inherit;
+    background: white;
+    color: #1a1a1a;
+}
+.vsep { width: 1px; height: 22px; background: rgba(255,255,255,0.25); margin: 0 2px; }
+
+/* ── 버튼 ── */
+.btn {
+    padding: 5px 13px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    font-family: inherit;
+    font-weight: bold;
+    transition: filter 0.15s;
+    white-space: nowrap;
+}
+.btn:hover { filter: brightness(1.1); }
+.btn:active { filter: brightness(0.9); }
+.btn-add    { background: #3aaa6c; color: white; }
+.btn-export { background: #e07b28; color: white; }
+.btn-import { background: #7b8ea0; color: white; }
+.btn-del    { background: #d93a3a; color: white; padding: 3px 8px; font-size: 11px; font-weight: normal; }
+
+/* ── 본문 패널 ── */
+.body-panel {
+    background: white;
+    border: 1px solid #c8d4e0;
+    border-top: none;
+    border-radius: 0 0 6px 6px;
+}
+
+/* ── 테이블 ── */
+.tbl-scroll { overflow-x: auto; padding: 14px 16px 8px; }
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 920px;
+}
+thead th {
+    background: #2d3e50;
+    color: white;
+    padding: 9px 7px;
+    text-align: center;
+    white-space: nowrap;
+    font-size: 12px;
+    border: 1px solid #1a2634;
+    line-height: 1.3;
+}
+tbody td {
+    border: 1px solid #dde4ec;
+    padding: 4px 5px;
+    vertical-align: middle;
+}
+tbody tr:nth-child(even) td { background: #f5f8fc; }
+tbody tr:hover td           { background: #e8f2fc; }
+
+/* 상태별 행 */
+tbody tr.row-started td         { background: #fffce6 !important; }
+tbody tr.row-started:hover td   { background: #fff7c2 !important; }
+tbody tr.row-completed td       { background: #f0f0f0 !important; color: #999; }
+tbody tr.row-completed:hover td { background: #e8e8e8 !important; }
+
+/* 번호 */
+.td-num {
+    text-align: center;
+    font-weight: bold;
+    color: #1a3a5c;
+    min-width: 40px;
+    font-size: 14px;
+}
+.td-num.pri { color: #c0520a; }
+
+/* 입력 공통 */
+.inp-t, .inp-d {
+    width: 100%;
+    padding: 4px 6px;
+    border: 1px solid transparent;
+    border-radius: 3px;
+    font-size: 12px;
+    font-family: inherit;
+    background: transparent;
+    transition: border-color .12s, background .12s;
+}
+.inp-t:hover, .inp-d:hover { border-color: #b8cad8; background: white; }
+.inp-t:focus, .inp-d:focus {
+    outline: none;
+    border-color: #2b7be0;
+    background: white;
+    box-shadow: 0 0 0 2px rgba(43,123,224,.18);
+}
+.row-completed .inp-t,
+.row-completed .inp-d { color: #999; }
+
+.col-cont   { min-width: 200px; }
+.col-dept   { min-width: 100px; }
+.col-per    { min-width: 80px; }
+.col-date   { min-width: 120px; }
+
+/* 체크박스 */
+.td-cb { text-align: center; min-width: 54px; }
+.td-cb input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; }
+.td-del { text-align: center; min-width: 48px; }
+
+/* 빈 목록 */
+.empty-row td {
+    text-align: center;
+    padding: 28px 0;
+    color: #a8b8c8;
+    font-style: italic;
+}
+
+/* ── 범례 ── */
+.legend {
+    display: flex;
+    gap: 18px;
+    padding: 8px 16px;
+    font-size: 11px;
+    color: #555;
+    border-top: 1px solid #e8eef4;
+    flex-wrap: wrap;
+    align-items: center;
+}
+.leg-item { display: flex; align-items: center; gap: 5px; }
+.leg-box {
+    width: 14px; height: 14px;
+    border: 1px solid #ccc;
+    border-radius: 2px;
+    flex-shrink: 0;
+}
+.leg-started  { background: #fffce6; }
+.leg-completed{ background: #f0f0f0; }
+.leg-normal   { background: white; }
+
+/* ── 상태 바 ── */
+.status-bar {
+    background: #edf2f7;
+    border-top: 1px solid #dde4ec;
+    padding: 6px 16px;
+    font-size: 11px;
+    color: #6a7f94;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-radius: 0 0 6px 6px;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.s-saved { color: #267a47; font-weight: bold; }
+.s-warn  { color: #c05300; font-weight: bold; }
+
+/* ── 범례 툴팁 안내 ── */
+.notice {
+    padding: 6px 16px 10px;
+    font-size: 11px;
+    color: #7a8fa0;
+    border-top: 1px solid #eef2f6;
+    line-height: 1.6;
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- 헤더 -->
+<div class="header">
+    <div>
+        <h1>업무 할 일 관리 시스템</h1>
+        <div class="sub">Task Management System &nbsp;|&nbsp; 내부망 전용</div>
+    </div>
+    <div class="date-badge" id="headerDate"></div>
+</div>
+
+<!-- 컨트롤 바 -->
+<div class="ctrl">
+    <label for="viewDate">조회 날짜</label>
+    <input type="date" id="viewDate">
+    <div class="vsep"></div>
+    <button class="btn btn-add" onclick="addTask()">+ 할일 추가</button>
+    <div class="vsep"></div>
+    <button class="btn btn-export" onclick="exportData()">내보내기 (JSON)</button>
+    <button class="btn btn-import" onclick="document.getElementById('impFile').click()">가져오기 (JSON)</button>
+    <input type="file" id="impFile" accept=".json" style="display:none" onchange="importData(event)">
+</div>
+
+<!-- 본문 -->
+<div class="body-panel">
+    <div class="tbl-scroll">
+        <table>
+            <thead>
+                <tr>
+                    <th style="width:44px">번호</th>
+                    <th>할일 내용</th>
+                    <th style="width:112px">관련 부서</th>
+                    <th style="width:92px">관련 담당자</th>
+                    <th style="width:128px">할일 발생일</th>
+                    <th style="width:128px">기한</th>
+                    <th style="width:56px">시작<br>여부</th>
+                    <th style="width:56px">종료<br>여부</th>
+                    <th style="width:48px">삭제</th>
+                </tr>
+            </thead>
+            <tbody id="taskBody"></tbody>
+        </table>
+    </div>
+
+    <!-- 범례 -->
+    <div class="legend">
+        <strong>범례</strong>
+        <div class="leg-item"><div class="leg-box leg-started"></div> 시작됨 (노란색)</div>
+        <div class="leg-item"><div class="leg-box leg-completed"></div> 종료됨 (회색, 다음날부터 목록에서 제외)</div>
+        <div class="leg-item"><div class="leg-box leg-normal"></div> 미시작</div>
+    </div>
+
+    <!-- 안내 -->
+    <div class="notice">
+        * 시작여부 체크 시 해당 항목이 1번으로 이동합니다. 여러 항목 체크 시 마지막으로 체크한 항목이 1번이 됩니다.
+        &nbsp;&nbsp;* 종료여부 체크 후 다음날부터 해당 항목이 목록에서 사라집니다.
+        &nbsp;&nbsp;* 조회 날짜 변경 시 해당일 이후 발생 할일은 표시되지 않습니다.
+        &nbsp;&nbsp;* 데이터는 브라우저 로컬 저장소에 자동 저장됩니다. 백업 시 [내보내기]를 이용하세요.
+    </div>
+
+    <!-- 상태 바 -->
+    <div class="status-bar">
+        <span id="statusMsg">준비</span>
+        <span id="statusCount">총 0개 항목</span>
+    </div>
+</div>
+
+</div><!-- /wrap -->
+
+<script>
+/* =============================================================
+   전역 상태
+============================================================= */
+var tasks    = [];
+var nextOrd  = 1;
+var SKEY     = 'task_mgr_v2';
+
+/* =============================================================
+   날짜 유틸
+============================================================= */
+function todayStr() {
+    var d  = new Date();
+    var m  = d.getMonth() + 1;
+    var dd = d.getDate();
+    return d.getFullYear()
+        + '-' + (m  < 10 ? '0' : '') + m
+        + '-' + (dd < 10 ? '0' : '') + dd;
+}
+
+function fmtDate(s) {          /* YYYY-MM-DD → YYYY년 MM월 DD일 */
+    if (!s) return '';
+    var p = s.split('-');
+    if (p.length !== 3) return s;
+    return p[0] + '년 ' + parseInt(p[1]) + '월 ' + parseInt(p[2]) + '일';
+}
+
+/* =============================================================
+   고유 ID
+============================================================= */
+function uid() {
+    return Date.now().toString(36) + Math.floor(Math.random() * 1e9).toString(36);
+}
+
+/* =============================================================
+   HTML 이스케이프
+============================================================= */
+function esc(s) {
+    if (s == null) return '';
+    return String(s)
+        .replace(/&/g,  '&amp;')
+        .replace(/</g,  '&lt;')
+        .replace(/>/g,  '&gt;')
+        .replace(/"/g,  '&quot;')
+        .replace(/'/g,  '&#39;');
+}
+
+/* =============================================================
+   저장 / 불러오기 (localStorage)
+============================================================= */
+function save() {
+    try {
+        localStorage.setItem(SKEY, JSON.stringify({ tasks: tasks, nextOrd: nextOrd }));
+        setStatus('자동 저장 완료', 'ok');
+    } catch (e) {
+        setStatus('저장 실패: ' + e.message, 'warn');
+    }
+}
+
+function loadFromStorage() {
+    try {
+        var raw = localStorage.getItem(SKEY);
+        if (raw) {
+            var d  = JSON.parse(raw);
+            tasks  = d.tasks   || [];
+            nextOrd= d.nextOrd || 1;
+        }
+    } catch (e) {
+        tasks  = [];
+        nextOrd= 1;
+    }
+}
+
+/* =============================================================
+   내보내기 / 가져오기
+============================================================= */
+function exportData() {
+    var json = JSON.stringify({ tasks: tasks, nextOrd: nextOrd }, null, 2);
+    var fname = 'tasks_' + todayStr() + '.json';
+
+    /* IE11 호환 */
+    if (window.navigator && window.navigator.msSaveOrOpenBlob) {
+        var b = new Blob([json], { type: 'application/json' });
+        window.navigator.msSaveOrOpenBlob(b, fname);
+        return;
+    }
+    var blob = new Blob([json], { type: 'application/json' });
+    var url  = URL.createObjectURL(blob);
+    var a    = document.createElement('a');
+    a.href     = url;
+    a.download = fname;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+function importData(e) {
+    var file = e.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(ev) {
+        try {
+            var d = JSON.parse(ev.target.result);
+            if (!confirm('현재 데이터를 가져온 파일로 교체합니다.\n기존 데이터는 사라집니다. 계속하시겠습니까?')) return;
+            tasks  = d.tasks   || [];
+            nextOrd= d.nextOrd || 1;
+            save();
+            render();
+            setStatus('가져오기 완료', 'ok');
+        } catch (err) {
+            alert('올바른 형식의 JSON 파일이 아닙니다.');
+        }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+}
+
+/* =============================================================
+   필터 & 정렬
+============================================================= */
+function getVisible(viewDate) {
+    var result = [];
+    var i, t;
+    for (i = 0; i < tasks.length; i++) {
+        t = tasks[i];
+        /* 할일 발생일이 조회일 이후인 항목 제외 */
+        if (t.occurrenceDate && t.occurrenceDate > viewDate) continue;
+        /* 종료 항목: 종료일 다음날부터 숨김 */
+        if (t.completed && t.completedDate && t.completedDate < viewDate) continue;
+        result.push(t);
+    }
+
+    result.sort(function(a, b) {
+        /* 시작된 항목 우선, startedTimestamp 내림차순(최근 = 작은 번호) */
+        if (a.started && b.started) return b.startedTimestamp - a.startedTimestamp;
+        if (a.started)  return -1;
+        if (b.started)  return  1;
+        /* 미시작: 입력 순서 오름차순 */
+        return a.inputOrder - b.inputOrder;
+    });
+
+    return result;
+}
+
+/* =============================================================
+   렌더링
+============================================================= */
+function render() {
+    var viewDate = document.getElementById('viewDate').value;
+    var list     = getVisible(viewDate);
+    var tbody    = document.getElementById('taskBody');
+    var html     = '';
+    var i, t, rowCls, numCls, num;
+
+    if (list.length === 0) {
+        html = '<tr class="empty-row"><td colspan="9">표시할 할일이 없습니다. 위의 [+ 할일 추가] 버튼을 눌러 항목을 추가하세요.</td></tr>';
+    } else {
+        for (i = 0; i < list.length; i++) {
+            t      = list[i];
+            num    = i + 1;
+            rowCls = t.completed ? 'row-completed' : (t.started ? 'row-started' : '');
+            numCls = 'td-num' + (t.started ? ' pri' : '');
+
+            html +=
+                '<tr class="' + rowCls + '" data-id="' + t.id + '">' +
+                '<td class="' + numCls + '">' + num + '</td>' +
+                '<td class="col-cont"><input type="text" class="inp-t" value="' + esc(t.content) + '"' +
+                    ' placeholder="할일 내용 입력"' +
+                    ' onchange="upd(\'' + t.id + '\',\'content\',this.value,false)"></td>' +
+                '<td class="col-dept"><input type="text" class="inp-t" value="' + esc(t.department) + '"' +
+                    ' placeholder="부서명"' +
+                    ' onchange="upd(\'' + t.id + '\',\'department\',this.value,false)"></td>' +
+                '<td class="col-per"><input type="text" class="inp-t" value="' + esc(t.person) + '"' +
+                    ' placeholder="담당자"' +
+                    ' onchange="upd(\'' + t.id + '\',\'person\',this.value,false)"></td>' +
+                '<td class="col-date"><input type="date" class="inp-d" value="' + esc(t.occurrenceDate) + '"' +
+                    ' onchange="upd(\'' + t.id + '\',\'occurrenceDate\',this.value,true)"></td>' +
+                '<td class="col-date"><input type="date" class="inp-d" value="' + esc(t.deadline) + '"' +
+                    ' onchange="upd(\'' + t.id + '\',\'deadline\',this.value,false)"></td>' +
+                '<td class="td-cb"><input type="checkbox"' + (t.started   ? ' checked' : '') +
+                    ' title="시작여부" onchange="toggleStarted(\'' + t.id + '\',this.checked)"></td>' +
+                '<td class="td-cb"><input type="checkbox"' + (t.completed ? ' checked' : '') +
+                    ' title="종료여부" onchange="toggleCompleted(\'' + t.id + '\',this.checked)"></td>' +
+                '<td class="td-del"><button class="btn btn-del" onclick="delTask(\'' + t.id + '\')">삭제</button></td>' +
+                '</tr>';
+        }
+    }
+
+    tbody.innerHTML = html;
+    document.getElementById('statusCount').textContent =
+        '총 ' + tasks.length + '개 항목  |  현재 표시: ' + list.length + '개';
+}
+
+/* =============================================================
+   CRUD
+============================================================= */
+function addTask() {
+    var viewDate = document.getElementById('viewDate').value;
+    tasks.push({
+        id            : uid(),
+        content       : '',
+        department    : '',
+        person        : '',
+        occurrenceDate: viewDate,
+        deadline      : '',
+        started       : false,
+        startedTimestamp: null,
+        completed     : false,
+        completedDate : null,
+        inputOrder    : nextOrd++
+    });
+    save();
+    render();
+}
+
+function upd(id, field, val, doRender) {
+    var t = find(id);
+    if (!t) return;
+    t[field] = val;
+    save();
+    if (doRender) render();
+}
+
+function toggleStarted(id, checked) {
+    var t = find(id);
+    if (!t) return;
+    t.started          = checked;
+    t.startedTimestamp = checked ? Date.now() : null;
+    save();
+    render();
+}
+
+function toggleCompleted(id, checked) {
+    var t = find(id);
+    if (!t) return;
+    t.completed    = checked;
+    t.completedDate= checked ? todayStr() : null;
+    save();
+    render();
+}
+
+function delTask(id) {
+    if (!confirm('이 항목을 삭제하시겠습니까?\n삭제된 데이터는 복구할 수 없습니다.')) return;
+    for (var i = 0; i < tasks.length; i++) {
+        if (tasks[i].id === id) { tasks.splice(i, 1); break; }
+    }
+    save();
+    render();
+}
+
+function find(id) {
+    for (var i = 0; i < tasks.length; i++) {
+        if (tasks[i].id === id) return tasks[i];
+    }
+    return null;
+}
+
+/* =============================================================
+   상태 표시
+============================================================= */
+function setStatus(msg, type) {
+    var el = document.getElementById('statusMsg');
+    el.textContent = msg;
+    el.className   = type === 'ok' ? 's-saved' : (type === 'warn' ? 's-warn' : '');
+}
+
+/* =============================================================
+   초기화
+============================================================= */
+window.onload = function() {
+    var t = todayStr();
+
+    /* 헤더 날짜 표시 */
+    document.getElementById('headerDate').textContent = fmtDate(t);
+
+    /* 조회 날짜 기본값 = 오늘 */
+    document.getElementById('viewDate').value = t;
+
+    /* 날짜 변경 시 재렌더링 */
+    document.getElementById('viewDate').addEventListener('change', function() {
+        render();
+    });
+
+    /* 저장된 데이터 불러오기 */
+    loadFromStorage();
+    render();
+
+    /* localStorage 미지원 환경 경고 */
+    try {
+        localStorage.setItem('_test_', '1');
+        localStorage.removeItem('_test_');
+        setStatus('데이터 로드 완료 — 자동 저장 활성화', 'ok');
+    } catch (e) {
+        setStatus('[경고] 이 브라우저에서는 자동 저장이 지원되지 않습니다. 내보내기로 수동 저장하세요.', 'warn');
+    }
+};
+</script>
+</body>
+</html>
