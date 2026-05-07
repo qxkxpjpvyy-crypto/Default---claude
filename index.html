@@ -81,6 +81,12 @@
         <div class="subtitle">복잡한 코딩은 Jules에게 맡기고, 당신은 '가치 창출'에 집중하세요.</div>
     </header>
 
+    <div style="text-align: right; margin-bottom: 20px;">
+        <button id="downloadBtn" style="background-color: #2c3e50; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 1rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: background-color 0.3s;">
+            📥 이 페이지(HTML) 다운로드
+        </button>
+    </div>
+
     <div class="intro-box">
         <strong>👋 바이브 코딩(Vibe Coding)이란?</strong><br>
         직접 코드를 한 줄 한 줄 타이핑하는 대신, 자연어로 AI와 소통하며 직관적으로 소프트웨어를 만들어내는 방식입니다.
@@ -130,5 +136,27 @@
         <p>Designed by Jules - Your AI Co-founder</p>
     </footer>
 
+    <script>
+        document.getElementById('downloadBtn').addEventListener('click', function() {
+            // Get the entire HTML content of the current page
+            const htmlContent = document.documentElement.outerHTML;
+
+            // Create a Blob from the HTML string
+            const blob = new Blob([htmlContent], { type: 'text/html' });
+
+            // Create a temporary link element
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'jules_vibe_coding_guide.html'; // Suggested file name
+
+            // Append the link to the body, click it, and then remove it
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            // Clean up the URL object
+            URL.revokeObjectURL(link.href);
+        });
+    </script>
 </body>
 </html>
