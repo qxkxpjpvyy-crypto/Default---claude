@@ -1214,8 +1214,6 @@ function formatMoney(amount) {
             let medianRent = getQuantile(results.rentFinalNW, 0.5);
 
             document.getElementById('median-buy').innerText = formatMoney(medianBuy);
-
-            document.getElementById('median-buy').innerText = formatMoney(medianBuy);
             document.getElementById('median-rent').innerText = formatMoney(medianRent);
 
             // Calculate Sensitivities (Correlation of shock sum vs final Difference)
