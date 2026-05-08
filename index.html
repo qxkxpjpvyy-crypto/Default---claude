@@ -3,132 +3,863 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jules 가이드: 경제학도를 위한 바이브 코딩</title>
+    <title>임대 vs. 구매 몬테카를로 시뮬레이션</title>
     <style>
-        body {
-            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif;
-            line-height: 1.6;
-            color: #333;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #f8f9fa;
+        :root {
+            --bg-color: #121212;
+            --panel-bg: #1e1e24;
+            --text-main: #ffffff;
+            --text-muted: #a0a0a0;
+            --accent-blue: #3b82f6;
+            --accent-green: #10b981;
+            --accent-red: #ef4444;
+            --border-color: #333333;
+            --input-bg: #2a2a35;
         }
-        header {
-            text-align: center;
-            padding: 40px 0;
-            background-color: #2c3e50;
-            color: white;
-            border-radius: 10px;
-            margin-bottom: 30px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-        h1 {
+
+        * {
+            box-sizing: border-box;
             margin: 0;
-            font-size: 2.2rem;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
         }
-        .subtitle {
-            font-size: 1.2rem;
-            opacity: 0.9;
-            margin-top: 10px;
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            line-height: 1.6;
+            padding: 20px;
         }
-        .card {
-            background: white;
-            border-radius: 8px;
-            padding: 25px;
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+
+        @media (min-width: 1024px) {
+            .container {
+                grid-template-columns: 400px 1fr;
+            }
+        }
+
+        .panel {
+            background-color: var(--panel-bg);
+            border-radius: 12px;
+            padding: 24px;
+            border: 1px solid var(--border-color);
+        }
+
+        .panel-header {
+            font-size: 1.25rem;
+            font-weight: bold;
             margin-bottom: 20px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-            border-left: 5px solid #3498db;
-        }
-        .card h2 {
-            color: #2c3e50;
-            margin-top: 0;
             display: flex;
             align-items: center;
             gap: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border-color);
         }
-        .econ-term {
-            background-color: #e8f4f8;
-            color: #2980b9;
-            padding: 2px 6px;
+
+
+        /* Extra styling for a modern dark theme */
+        .panel {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .input-value {
+            background-color: #1a1a24;
+            color: #60a5fa;
+            border: 1px solid #3f3f46;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            background: #3f3f46;
+        }
+        .radio-group {
+            background-color: #1a1a24;
+            border: 1px solid #3f3f46;
+        }
+        .radio-label {
+            border-right: 1px solid #3f3f46;
+            color: #a1a1aa;
+        }
+        .radio-input:checked + .radio-label {
+            background: #2563eb;
+            color: #ffffff;
+        }
+
+        /* Utilities */
+        .mb-4 { margin-bottom: 1rem; }
+        .text-sm { font-size: 0.875rem; }
+        .text-muted { color: var(--text-muted); }
+        .flex { display: flex; }
+        .justify-between { justify-content: space-between; }
+        .align-center { align-items: center; }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--bg-color);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #555;
             border-radius: 4px;
-            font-size: 0.9em;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #777;
+        }
+
+        .left-col {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            max-height: calc(100vh - 40px);
+            overflow-y: auto;
+        }
+
+        .right-col {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .header-title {
+            font-size: 1.5rem;
             font-weight: bold;
+            margin-bottom: 10px;
         }
-        .highlight {
-            color: #e74c3c;
-            font-weight: bold;
-        }
-        footer {
-            text-align: center;
-            margin-top: 40px;
-            color: #7f8c8d;
-            font-size: 0.9rem;
-        }
-        .intro-box {
-            background-color: #fff3e0;
-            padding: 20px;
+
+
+        /* Checkbox Toggles for Regulations */
+        .toggle-group {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 16px;
+            padding: 12px;
+            background: var(--input-bg);
             border-radius: 8px;
-            margin-bottom: 30px;
-            border: 1px solid #ffe0b2;
+            border: 1px solid var(--border-color);
         }
+        .toggle-input {
+            margin-top: 4px;
+            margin-right: 12px;
+            width: 16px;
+            height: 16px;
+            accent-color: var(--accent-blue);
+        }
+        .toggle-content { flex: 1; }
+        .toggle-title { font-weight: 500; font-size: 0.95rem; margin-bottom: 4px; }
+        .toggle-desc { font-size: 0.8rem; color: var(--text-muted); }
+        .citation {
+            font-size: 0.75rem;
+            color: var(--accent-green);
+            margin-top: 4px;
+            display: inline-block;
+        }
+
+        /* Input Controls */
+        .input-group { margin-bottom: 16px; }
+        .input-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .input-label { font-size: 0.9rem; font-weight: 500; }
+        .input-value { font-size: 0.9rem; color: var(--accent-blue); font-weight: bold; background: var(--input-bg); padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border-color); text-align: right; width: 120px;}
+
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+            margin: 8px 0;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            background: var(--accent-blue);
+            cursor: pointer;
+            margin-top: -6px;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: var(--border-color);
+            border-radius: 2px;
+        }
+
+        .radio-group {
+            display: flex;
+            background: var(--input-bg);
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+            margin-top: 8px;
+        }
+        .radio-label {
+            flex: 1;
+            text-align: center;
+            padding: 8px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            border-right: 1px solid var(--border-color);
+            transition: background 0.2s;
+        }
+        .radio-label:last-child { border-right: none; }
+        .radio-input { display: none; }
+        .radio-input:checked + .radio-label {
+            background: var(--accent-blue);
+            color: white;
+            font-weight: bold;
+        }
+
     </style>
 </head>
 <body>
+    <div class="container">
+        <!-- 왼쪽 입력 패널 -->
+        <div class="left-col">
+            <div class="header-title">
+                임대 vs. 구매 <br>
+                <span class="text-sm text-muted">몬테카를로 시뮬레이션 (대한민국 규제 반영)</span>
+            </div>
 
-    <header>
-        <h1>Jules: 경제학도를 위한 바이브 코딩 가이드 🚀</h1>
-        <div class="subtitle">복잡한 코딩은 Jules에게 맡기고, 당신은 '가치 창출'에 집중하세요.</div>
-    </header>
+            <div class="panel">
+                <div class="panel-header">입력 변수 (Inputs)</div>
+                <div id="inputs-container">
+                    <!-- 입력 컨트롤들이 여기에 추가될 예정 -->
 
-    <div class="intro-box">
-        <strong>👋 바이브 코딩(Vibe Coding)이란?</strong><br>
-        직접 코드를 한 줄 한 줄 타이핑하는 대신, 자연어로 AI와 소통하며 직관적으로 소프트웨어를 만들어내는 방식입니다.
-        마치 CEO(당신)가 유능한 CTO(Jules)에게 프로젝트를 지시하고 소통하며 결과물을 만들어내는 과정과 같습니다.
+                    <!-- 목표 주택 가격 -->
+                    <div class="input-group">
+                        <div class="input-header">
+                            <label class="input-label" for="target-price">목표 주택 가격 (원)</label>
+                            <input type="text" id="target-price-val" class="input-value" value="1,000,000,000" onchange="updateSlider('target-price', this.value)">
+                        </div>
+                        <input type="range" id="target-price" min="100000000" max="5000000000" step="10000000" value="1000000000" oninput="updateInput('target-price-val', this.value)">
+                    </div>
+
+                    <!-- 현재 보유 순자산 -->
+                    <div class="input-group">
+                        <div class="input-header">
+                            <label class="input-label" for="current-net-worth">현재 보유 순자산 (원)</label>
+                            <input type="text" id="current-net-worth-val" class="input-value" value="300,000,000" onchange="updateSlider('current-net-worth', this.value)">
+                        </div>
+                        <input type="range" id="current-net-worth" min="0" max="3000000000" step="10000000" value="300000000" oninput="updateInput('current-net-worth-val', this.value)">
+                    </div>
+
+                    <!-- 예상 월 저축액 -->
+                    <div class="input-group">
+                        <div class="input-header">
+                            <label class="input-label" for="monthly-savings">예상 월 저축액 (원)</label>
+                            <input type="text" id="monthly-savings-val" class="input-value" value="2,000,000" onchange="updateSlider('monthly-savings', this.value)">
+                        </div>
+                        <input type="range" id="monthly-savings" min="0" max="10000000" step="100000" value="2000000" oninput="updateInput('monthly-savings-val', this.value)">
+                    </div>
+
+                    <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 20px 0;">
+
+                    <!-- 현재 거주 형태 -->
+                    <div class="input-group">
+                        <label class="input-label">현재 거주 형태</label>
+                        <div class="radio-group">
+                            <input type="radio" id="rent-type-jeonse" name="rent-type" class="radio-input" value="jeonse" checked onchange="toggleRentInputs()">
+                            <label for="rent-type-jeonse" class="radio-label">전세</label>
+
+                            <input type="radio" id="rent-type-monthly" name="rent-type" class="radio-input" value="monthly" onchange="toggleRentInputs()">
+                            <label for="rent-type-monthly" class="radio-label">월세</label>
+                        </div>
+                    </div>
+
+                    <!-- 전세 보증금 -->
+                    <div class="input-group" id="group-jeonse-deposit">
+                        <div class="input-header">
+                            <label class="input-label" for="jeonse-deposit">전세 보증금 (원)</label>
+                            <input type="text" id="jeonse-deposit-val" class="input-value" value="200,000,000" onchange="updateSlider('jeonse-deposit', this.value)">
+                        </div>
+                        <input type="range" id="jeonse-deposit" min="0" max="2000000000" step="10000000" value="200000000" oninput="updateInput('jeonse-deposit-val', this.value)">
+                    </div>
+
+                    <!-- 월세 보증금 (Hidden by default) -->
+                    <div class="input-group" id="group-monthly-deposit" style="display: none;">
+                        <div class="input-header">
+                            <label class="input-label" for="monthly-deposit">월세 보증금 (원)</label>
+                            <input type="text" id="monthly-deposit-val" class="input-value" value="50,000,000" onchange="updateSlider('monthly-deposit', this.value)">
+                        </div>
+                        <input type="range" id="monthly-deposit" min="0" max="1000000000" step="5000000" value="50000000" oninput="updateInput('monthly-deposit-val', this.value)">
+                    </div>
+
+                    <!-- 월세 (Hidden by default) -->
+                    <div class="input-group" id="group-monthly-rent" style="display: none;">
+                        <div class="input-header">
+                            <label class="input-label" for="monthly-rent">월세 (원)</label>
+                            <input type="text" id="monthly-rent-val" class="input-value" value="1,000,000" onchange="updateSlider('monthly-rent', this.value)">
+                        </div>
+                        <input type="range" id="monthly-rent" min="0" max="10000000" step="50000" value="1000000" oninput="updateInput('monthly-rent-val', this.value)">
+                    </div>
+
+                    <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 20px 0;">
+
+                    <!-- 투자 성향 -->
+                    <div class="input-group">
+                        <label class="input-label">투자 성향 (수익률 가정)</label>
+                        <div class="radio-group">
+                            <input type="radio" id="invest-conservative" name="invest-profile" class="radio-input" value="conservative">
+                            <label for="invest-conservative" class="radio-label">안정형 (3%)</label>
+
+                            <input type="radio" id="invest-neutral" name="invest-profile" class="radio-input" value="neutral" checked>
+                            <label for="invest-neutral" class="radio-label">중립형 (5%)</label>
+
+                            <input type="radio" id="invest-aggressive" name="invest-profile" class="radio-input" value="aggressive">
+                            <label for="invest-aggressive" class="radio-label">공격형 (8%)</label>
+                        </div>
+                    </div>
+
+                    <!-- 분석 기간 -->
+                    <div class="input-group">
+                        <div class="input-header">
+                            <label class="input-label" for="analysis-years">분석 기간 (년)</label>
+                            <input type="text" id="analysis-years-val" class="input-value" value="20" onchange="updateSlider('analysis-years', this.value)">
+                        </div>
+                        <input type="range" id="analysis-years" min="5" max="50" step="1" value="20" oninput="updateInput('analysis-years-val', this.value)">
+                    </div>
+
+                    <!-- 시뮬레이션 횟수 -->
+                    <div class="input-group">
+                        <div class="input-header">
+                            <label class="input-label" for="sim-count">시뮬레이션 횟수</label>
+                            <input type="text" id="sim-count-val" class="input-value" value="1,000" onchange="updateSlider('sim-count', this.value)">
+                        </div>
+                        <input type="range" id="sim-count" min="100" max="10000" step="100" value="1000" oninput="updateInput('sim-count-val', this.value)">
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header">규제 및 세금 설정 (Regulations & Taxes)</div>
+                <div id="regulations-container">
+                    <!-- 규제 체크박스들이 여기에 추가될 예정 -->
+
+                    <!-- LTV/DSR 규제 -->
+                    <div class="toggle-group">
+                        <input type="checkbox" id="reg-ltv" class="toggle-input" checked>
+                        <div class="toggle-content">
+                            <label for="reg-ltv" class="toggle-title">LTV / DSR 대출 규제 적용</label>
+                            <div class="toggle-desc">무주택자 LTV 70%, DSR 40% 한도 적용하여 최대 대출 가능액을 제한합니다.</div>
+                            <div class="citation">근거: 금융위원회 은행업감독규정 제79조</div>
+                        </div>
+                    </div>
+
+                    <!-- 취득세 다주택자 중과 -->
+                    <div class="toggle-group">
+                        <input type="checkbox" id="reg-acq-tax" class="toggle-input" checked>
+                        <div class="toggle-content">
+                            <label for="reg-acq-tax" class="toggle-title">취득세 누진세율 적용</label>
+                            <div class="toggle-desc">주택 가액에 따라 1~3%의 누진 취득세율 및 지방교육세를 적용합니다.</div>
+                            <div class="citation">근거: 지방세법 제11조 (부동산 취득의 세율)</div>
+                        </div>
+                    </div>
+
+                    <!-- 종합부동산세 -->
+                    <div class="toggle-group">
+                        <input type="checkbox" id="reg-property-tax" class="toggle-input" checked>
+                        <div class="toggle-content">
+                            <label for="reg-property-tax" class="toggle-title">재산세 및 종합부동산세 (보유세) 적용</label>
+                            <div class="toggle-desc">공시가격(시세의 70% 가정)을 기준으로 매년 재산세 및 종부세(12억 초과분)를 공제합니다.</div>
+                            <div class="citation">근거: 종합부동산세법 제8조 및 지방세법 제111조</div>
+                        </div>
+                    </div>
+
+                    <!-- 1세대 1주택 비과세 -->
+                    <div class="toggle-group">
+                        <input type="checkbox" id="reg-cap-gains" class="toggle-input" checked>
+                        <div class="toggle-content">
+                            <label for="reg-cap-gains" class="toggle-title">1세대 1주택 양도소득세 비과세 적용</label>
+                            <div class="toggle-desc">매도 시 실거래가 12억 이하 양도세 비과세, 12억 초과분에 한해 과세합니다 (보유/거주 요건 충족 가정).</div>
+                            <div class="citation">근거: 소득세법 제89조 (비과세 양도소득)</div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- 오른쪽 결과 패널 -->
+        <div class="right-col">
+            <div class="panel">
+                <div class="panel-header">시뮬레이션 요약 (Summary)</div>
+                <div id="summary-container">
+                    <!-- 결과 요약 카드가 여기에 추가될 예정 -->
+
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; background: var(--input-bg); padding: 12px; border-radius: 8px;">
+                            <span class="text-sm">구매가 유리할 확률</span>
+                            <span id="prob-buy-better" style="font-size: 1.5rem; font-weight: bold; color: var(--accent-blue);">--%</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; background: var(--input-bg); padding: 12px; border-radius: 8px;">
+                            <span class="text-sm">중앙값(Median) 순자산 (구매)</span>
+                            <span id="median-buy" style="font-size: 1.25rem; font-weight: bold;">--원</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; background: var(--input-bg); padding: 12px; border-radius: 8px;">
+                            <span class="text-sm">중앙값(Median) 순자산 (임대)</span>
+                            <span id="median-rent" style="font-size: 1.25rem; font-weight: bold;">--원</span>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="panel" style="flex: 1;">
+                <div class="panel-header">분석 차트 (Charts)</div>
+                <div id="charts-container" style="display: flex; flex-direction: column; gap: 20px;">
+                    <!-- 캔버스 차트들이 여기에 추가될 예정 -->
+
+                    <div style="position: relative; width: 100%; height: 300px; background: var(--input-bg); border-radius: 8px; overflow: hidden; padding: 10px;">
+                        <canvas id="dist-chart"></canvas>
+                        <div style="position: absolute; top: 10px; left: 10px; font-size: 0.8rem; font-weight: bold;">구매 우위 차액 분포 (원)</div>
+                    </div>
+                    <div style="position: relative; width: 100%; height: 300px; background: var(--input-bg); border-radius: 8px; overflow: hidden; padding: 10px;">
+                        <canvas id="quant-chart"></canvas>
+                        <div style="position: absolute; top: 10px; left: 10px; font-size: 0.8rem; font-weight: bold;">구매 우위 분위수 분석 (원)</div>
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header" style="font-size: 1rem;">분석 방법론</div>
+                <p class="text-sm text-muted">
+                    각 시뮬레이션에서 주택가격 상승률, 임대료 상승률, 투자수익률을 정규분포에서 무작위로 추출하여 경로를 생성합니다.
+                    구매 시나리오는 주택 자산가치에서 잔여 대출금과 매도 비용(세금 포함)을 차감한 순자산을,
+                    임대 시나리오는 초기 자본 차이를 투자한 포트폴리오 가치와 보증금의 합을 순자산으로 계산합니다.
+                </p>
+            </div>
+        </div>
     </div>
 
-    <div class="card" style="border-left-color: #2ecc71;">
-        <h2>1. 자율적 문제 해결 및 기획 <span class="econ-term">자원 배분의 효율성</span></h2>
-        <p>Jules는 단순한 코드 자판기가 아닙니다. 당신이 원하는 서비스를 말하면, 스스로 <strong>작업 계획(Plan)</strong>을 수립하고 최적의 단계로 나눕니다.</p>
-        <p>경제학의 한정된 자원(시간)을 가장 효율적으로 배분하여, 스스로 리서치하고 필요한 파일 구조를 파악한 뒤 코딩을 시작합니다. 목표만 주시면 '보이지 않는 손'처럼 알아서 시스템을 구축합니다.</p>
-    </div>
+    <script>
+        function formatNumber(num) {
+            return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+        }
 
-    <div class="card" style="border-left-color: #3498db;">
-        <h2>2. 터미널 및 환경 완벽 제어 <span class="econ-term">생산 요소의 통제</span></h2>
-        <p>코딩을 하려면 라이브러리 설치, 서버 실행 등 복잡한 '개발 환경 세팅'이 필요합니다. 초보자들이 가장 많이 포기하는 구간이죠.</p>
-        <p>Jules는 자신만의 터미널 환경을 가져서 <strong>필요한 도구를 직접 설치하고 서버를 구동(Bash Session)</strong>합니다. 당신은 복잡한 인프라나 생산 설비 구축에 신경 쓸 필요 없이, 오직 최종 생산물(Product)에만 집중하면 됩니다.</p>
-    </div>
+        function parseNumber(str) {
+            return parseInt(str.replace(/,/g, ''), 10) || 0;
+        }
 
-    <div class="card" style="border-left-color: #9b59b6;">
-        <h2>3. 사전 검증 및 테스트 <span class="econ-term">매몰 비용 방지와 위험 관리</span></h2>
-        <p>코드를 다 짜고 나서야 에러를 발견하면 엄청난 비용(시간)이 낭비됩니다.</p>
-        <p>Jules는 코드를 작성하면 반드시 스스로 <strong>작동 여부를 확인(Verification)</strong>하고 테스트합니다. 또한 PR(Pull Request) 리뷰 기능과 제출 전 검토(Pre-commit)를 거쳐, 치명적인 버그가 서비스에 반영되는 리스크(Risk)를 사전에 헷지(Hedge)합니다.</p>
-    </div>
+        function updateInput(inputId, value) {
+            document.getElementById(inputId).value = formatNumber(value);
+        }
 
-    <div class="card" style="border-left-color: #f1c40f;">
-        <h2>4. 웹 검색 및 시각 자료 분석 <span class="econ-term">정보의 비대칭성 해소</span></h2>
-        <p>최신 기술 문서가 필요하거나, 에러가 발생했을 때 Jules는 <strong>직접 구글을 검색(Google Search)</strong>하고 웹페이지를 읽습니다. 심지어 화면 스크린샷이나 <strong>이미지, 동영상(Media Reading)</strong>를 보고 분석할 수도 있습니다.</p>
-        <p>시장(웹)의 최신 정보를 실시간으로 습득하여 정보의 비대칭성을 해소하고 가장 모던한 방식으로 코드를 작성합니다.</p>
-    </div>
+        function updateSlider(sliderId, value) {
+            let num = parseNumber(value);
+            let slider = document.getElementById(sliderId);
+            if(num < slider.min) num = slider.min;
+            if(num > slider.max) num = slider.max;
+            slider.value = num;
+            document.getElementById(sliderId + '-val').value = formatNumber(num);
+        }
 
-    <div class="card" style="border-left-color: #e67e22;">
-        <h2>5. 스마트한 파일 편집 및 부분 수정 <span class="econ-term">한계 비용의 최소화</span></h2>
-        <p>기존의 코드를 수정할 때 전체를 갈아엎는 것은 비효율적입니다.</p>
-        <p>Jules는 Git Merge 방식의 <strong>정밀한 부분 수정(Search & Replace)</strong> 도구를 사용하여, 딱 필요한 부분만 안전하게 교체합니다. 이는 코드 유지보수에 들어가는 한계 비용(Marginal Cost)을 최소화하는 혁신적인 방법입니다.</p>
-    </div>
+        function toggleRentInputs() {
+            const isJeonse = document.getElementById('rent-type-jeonse').checked;
+            document.getElementById('group-jeonse-deposit').style.display = isJeonse ? 'block' : 'none';
+            document.getElementById('group-monthly-deposit').style.display = isJeonse ? 'none' : 'block';
+            document.getElementById('group-monthly-rent').style.display = isJeonse ? 'none' : 'block';
+        }
 
-    <div class="card" style="border-left-color: #e74c3c;">
-        <h2>💡 경제학도를 위한 요약</h2>
-        <p>
-            당신은 <strong>아이디어라는 '자본'</strong>과 <strong>서비스 기획이라는 '거시적 안목'</strong>을 가지고 있습니다.<br>
-            Jules는 이를 현실화하는 <strong>'최고의 노동력'이자 '미시적 실행가'</strong>입니다.<br>
-            복잡한 구문 오류(Syntax Error)나 터미널 명령어는 잊으세요. 이제는 <strong>"어떤 가치를 창출할 것인가?"</strong>라는 질문에만 집중하며 바이브 코딩을 즐기시면 됩니다!
-        </p>
-    </div>
 
-    <footer>
-        <p>Designed by Jules - Your AI Co-founder</p>
-    </footer>
+        // --- Monte Carlo Simulation Engine ---
+
+        // Box-Muller transform for standard normal distribution
+        function randomNormal() {
+            let u = 0, v = 0;
+            while(u === 0) u = Math.random();
+            while(v === 0) v = Math.random();
+            return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+        }
+
+        // Get value from inputs
+        function getVal(id) {
+            return parseInt(document.getElementById(id).value, 10);
+        }
+
+        // Tax calculation logic
+        function calculateTaxesAndCosts(price, isBuying, hasAcqTax, hasCapGainsTax) {
+            let costs = 0;
+
+            // 1. Acquisition Tax (취득세)
+            if (isBuying && hasAcqTax) {
+                let rate = 0.01; // Base 1% under 600m
+                if (price > 900000000) rate = 0.03; // Over 900m is 3%
+                else if (price > 600000000) rate = 0.01 + ((price - 600000000) / 300000000) * 0.02; // Linear scale
+                costs += price * rate;
+                costs += price * 0.002; // Local education tax (approx)
+            }
+
+            return costs;
+        }
+
+        function calculateYearlyHoldingCost(price, hasPropertyTax) {
+            if (!hasPropertyTax) return 0;
+            let assessedValue = price * 0.7; // 공시가격 현실화율 70% 가정
+            let tax = 0;
+
+            // 재산세 (Property Tax) - Simplified
+            tax += assessedValue * 0.002;
+
+            // 종합부동산세 (Comprehensive Real Estate Tax) - Simplified for 1 house > 1.2B
+            if (assessedValue > 1200000000) {
+                tax += (assessedValue - 1200000000) * 0.005; // Base rate
+            }
+            return tax;
+        }
+
+        function calculateSellingCost(buyPrice, sellPrice, hasCapGainsTax) {
+            let brokerFee = sellPrice * 0.005; // 중개수수료 0.5% 가정
+            let profit = sellPrice - buyPrice - brokerFee;
+            let capGainsTax = 0;
+
+            if (profit > 0 && hasCapGainsTax) {
+                // 1세대 1주택 12억 이하 비과세 적용
+                if (sellPrice > 1200000000) {
+                    let taxableRatio = (sellPrice - 1200000000) / sellPrice;
+                    let taxableProfit = profit * taxableRatio;
+                    // 장기보유특별공제 및 기본공제 등 간소화하여 단일세율 20% 가정
+                    capGainsTax = taxableProfit * 0.20;
+                }
+            } else if (profit > 0 && !hasCapGainsTax) {
+                capGainsTax = profit * 0.20; // 비과세 미적용시
+            }
+
+            return brokerFee + capGainsTax;
+        }
+
+        function runSimulation() {
+            // Inputs
+            const targetPrice = getVal('target-price');
+            const currentNW = getVal('current-net-worth');
+            const monthlySavings = getVal('monthly-savings');
+
+            const isJeonse = document.getElementById('rent-type-jeonse').checked;
+            const rentDeposit = isJeonse ? getVal('jeonse-deposit') : getVal('monthly-deposit');
+            const monthlyRent = isJeonse ? 0 : getVal('monthly-rent');
+
+            // Investment profile
+            let investProfile = document.querySelector('input[name="invest-profile"]:checked').value;
+            let expectedMarketReturn = 0.05; // Neutral
+            let marketVol = 0.10;
+            if (investProfile === 'conservative') { expectedMarketReturn = 0.03; marketVol = 0.05; }
+            if (investProfile === 'aggressive') { expectedMarketReturn = 0.08; marketVol = 0.15; }
+
+            // Regulations
+            const applyLTV = document.getElementById('reg-ltv').checked;
+            const applyAcqTax = document.getElementById('reg-acq-tax').checked;
+            const applyPropTax = document.getElementById('reg-property-tax').checked;
+            const applyCapGains = document.getElementById('reg-cap-gains').checked;
+
+            const years = getVal('analysis-years');
+            const simCount = getVal('sim-count');
+
+            // Assumptions for Housing Market
+            const expectedHouseReturn = 0.03; // Long term housing appreciation
+            const houseVol = 0.07;
+            const expectedRentInflation = 0.02;
+
+            // Loan Logic
+            const mortgageRate = 0.045; // Fixed 4.5% assumption
+
+            let results = {
+                buyFinalNW: [],
+                rentFinalNW: [],
+                differences: [] // Buy - Rent
+            };
+
+            for (let s = 0; s < simCount; s++) {
+                // --- BUY SCENARIO ---
+                let buy_NW = currentNW;
+                let loanAmount = targetPrice - buy_NW;
+
+                // Regulation: LTV/DSR limit
+                if (applyLTV) {
+                    let maxLTV = targetPrice * 0.7;
+                    if (loanAmount > maxLTV) {
+                        loanAmount = maxLTV; // Need more cash to buy, but let's assume they buy a cheaper house or find cash.
+                        // For simplicity in this calculator: If they can't afford it due to LTV, the simulation just maxes the loan and assumes they scrounge up the rest.
+                    }
+                }
+
+                if (loanAmount < 0) loanAmount = 0;
+
+                let houseVal = targetPrice;
+                let buy_Liquid = buy_NW - (targetPrice - loanAmount) - calculateTaxesAndCosts(targetPrice, true, applyAcqTax, applyCapGains);
+
+                // Amortization assumption (interest only for simplicity, principal paid at end)
+                let yearlyMortgageInterest = loanAmount * mortgageRate;
+
+                // --- RENT SCENARIO ---
+                let rent_NW = currentNW;
+                let currentRentDeposit = rentDeposit;
+                let currentMonthlyRent = monthlyRent;
+                let rent_Liquid = rent_NW - currentRentDeposit;
+
+                // Year by year simulation
+                for (let y = 0; y < years; y++) {
+                    // Random shocks
+                    let houseShock = randomNormal() * houseVol;
+                    let marketShock = randomNormal() * marketVol;
+
+                    // BUY
+                    houseVal *= (1 + expectedHouseReturn + houseShock);
+                    buy_Liquid = buy_Liquid * (1 + expectedMarketReturn + marketShock);
+                    buy_Liquid += (monthlySavings * 12);
+                    buy_Liquid -= yearlyMortgageInterest;
+                    buy_Liquid -= calculateYearlyHoldingCost(houseVal, applyPropTax);
+
+                    // RENT
+                    rent_Liquid = rent_Liquid * (1 + expectedMarketReturn + marketShock);
+                    rent_Liquid += (monthlySavings * 12);
+                    rent_Liquid -= (currentMonthlyRent * 12);
+
+                    // Rent inflation every 2 years (typical Korean contract)
+                    if (y % 2 === 1) {
+                        let inflation = 1 + expectedRentInflation * 2;
+                        let extraDeposit = currentRentDeposit * (inflation - 1);
+                        rent_Liquid -= extraDeposit; // pay more deposit from liquid
+                        currentRentDeposit *= inflation;
+                        currentMonthlyRent *= inflation;
+                    }
+                }
+
+                // End of simulation liquidation
+                let buySellingCost = calculateSellingCost(targetPrice, houseVal, applyCapGains);
+                let finalBuyNW = houseVal + buy_Liquid - loanAmount - buySellingCost;
+                let finalRentNW = currentRentDeposit + rent_Liquid;
+
+                results.buyFinalNW.push(finalBuyNW);
+                results.rentFinalNW.push(finalRentNW);
+                results.differences.push(finalBuyNW - finalRentNW);
+            }
+
+            results.buyFinalNW.sort((a,b) => a-b);
+            results.rentFinalNW.sort((a,b) => a-b);
+            results.differences.sort((a,b) => a-b);
+
+            drawCharts(results);
+            updateSummary(results);
+        }
+
+        function formatMoney(amount) {
+            const isNegative = amount < 0;
+            const absAmount = Math.abs(amount);
+            const eok = Math.floor(absAmount / 100000000);
+            const man = Math.floor((absAmount % 100000000) / 10000);
+
+            let result = "";
+            if (eok === 0) {
+                result = man + "만";
+            } else {
+                result = eok + "억 " + (man > 0 ? man + "만" : "");
+            }
+
+            return (isNegative ? "-" : "") + result;
+        }
+
+
+        // --- Output & Canvas Charting ---
+        function getQuantile(sortedArr, q) {
+            const pos = (sortedArr.length - 1) * q;
+            const base = Math.floor(pos);
+            const rest = pos - base;
+            if (sortedArr[base + 1] !== undefined) {
+                return sortedArr[base] + rest * (sortedArr[base + 1] - sortedArr[base]);
+            } else {
+                return sortedArr[base];
+            }
+        }
+
+        function updateSummary(results) {
+            let buyBetterCount = results.differences.filter(d => d > 0).length;
+            let prob = (buyBetterCount / results.differences.length) * 100;
+            document.getElementById('prob-buy-better').innerText = prob.toFixed(1) + "%";
+
+            let medianBuy = getQuantile(results.buyFinalNW, 0.5);
+            let medianRent = getQuantile(results.rentFinalNW, 0.5);
+
+            document.getElementById('median-buy').innerText = formatMoney(medianBuy);
+            document.getElementById('median-rent').innerText = formatMoney(medianRent);
+        }
+
+        function drawCharts(results) {
+            drawHistogram(results.differences, 'dist-chart');
+            drawQuantileBarChart(results.differences, 'quant-chart');
+        }
+
+        function drawHistogram(data, canvasId) {
+            const canvas = document.getElementById(canvasId);
+            const ctx = canvas.getContext('2d');
+
+            // Handle resizing
+            const rect = canvas.parentElement.getBoundingClientRect();
+            canvas.width = rect.width - 20;
+            canvas.height = rect.height - 20;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const bins = 40;
+            const min = data[0];
+            const max = data[data.length - 1];
+            const range = max - min;
+            const binSize = range / bins;
+
+            let frequencies = new Array(bins).fill(0);
+            for (let val of data) {
+                let binIndex = Math.floor((val - min) / binSize);
+                if (binIndex >= bins) binIndex = bins - 1;
+                frequencies[binIndex]++;
+            }
+
+            const maxFreq = Math.max(...frequencies);
+            const pad = 30;
+            const w = canvas.width - (pad * 2);
+            const h = canvas.height - (pad * 2);
+
+            // Draw zero line if it exists within range
+            if (min < 0 && max > 0) {
+                let zeroX = pad + ((0 - min) / range) * w;
+                ctx.beginPath();
+                ctx.setLineDash([5, 5]);
+                ctx.moveTo(zeroX, pad);
+                ctx.lineTo(zeroX, canvas.height - pad);
+                ctx.strokeStyle = '#666';
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+
+            // Draw bars
+            for (let i = 0; i < bins; i++) {
+                let barH = (frequencies[i] / maxFreq) * h;
+                let x = pad + (i / bins) * w;
+                let y = canvas.height - pad - barH;
+
+                let binCenter = min + (i + 0.5) * binSize;
+
+                // Color gradient based on positive/negative
+                if (binCenter > 0) {
+                    ctx.fillStyle = `rgba(59, 130, 246, ${Math.max(0.3, barH/h)})`; // blue
+                } else {
+                    ctx.fillStyle = `rgba(16, 185, 129, ${Math.max(0.3, barH/h)})`; // green/teal (matches image)
+                }
+
+                ctx.fillRect(x, y, w / bins - 1, barH);
+            }
+
+            // X Axis Labels
+            ctx.fillStyle = '#a0a0a0';
+            ctx.font = '10px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(formatMoney(min), pad, canvas.height - 10);
+            ctx.fillText(formatMoney(max), canvas.width - pad, canvas.height - 10);
+            if (min < 0 && max > 0) {
+                ctx.fillText("0원", pad + ((0 - min) / range) * w, canvas.height - 10);
+            }
+        }
+
+        function drawQuantileBarChart(data, canvasId) {
+            const canvas = document.getElementById(canvasId);
+            const ctx = canvas.getContext('2d');
+
+            const rect = canvas.parentElement.getBoundingClientRect();
+            canvas.width = rect.width - 20;
+            canvas.height = rect.height - 20;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const q10 = getQuantile(data, 0.1);
+            const q25 = getQuantile(data, 0.25);
+            const q50 = getQuantile(data, 0.50);
+            const mean = data.reduce((a, b) => a + b, 0) / data.length;
+            const q75 = getQuantile(data, 0.75);
+            const q90 = getQuantile(data, 0.90);
+
+            const labels = ['P10', 'P25', '중앙값', '평균', 'P75', 'P90'];
+            const values = [q10, q25, q50, mean, q75, q90];
+
+            const padX = 50;
+            const padY = 30;
+            const w = canvas.width - padX * 2;
+            const h = canvas.height - padY * 2;
+
+            const min = Math.min(...values, -100000000); // ensure some negative space
+            const max = Math.max(...values, 100000000);
+            const range = max - min;
+
+            let zeroX = padX + ((0 - min) / range) * w;
+
+            // Draw zero line
+            ctx.beginPath();
+            ctx.setLineDash([5, 5]);
+            ctx.moveTo(zeroX, padY);
+            ctx.lineTo(zeroX, canvas.height - padY);
+            ctx.strokeStyle = '#666';
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Draw bars
+            const barHeight = (h / values.length) * 0.6;
+            ctx.font = '12px Arial';
+            ctx.textAlign = 'right';
+            ctx.textBaseline = 'middle';
+
+            for (let i = 0; i < values.length; i++) {
+                let val = values[i];
+                let y = padY + (i + 0.5) * (h / values.length);
+
+                ctx.fillStyle = '#a0a0a0';
+                ctx.fillText(labels[i], padX - 10, y);
+
+                let barW = Math.abs((val / range) * w);
+                let x = val < 0 ? zeroX - barW : zeroX;
+
+                if (val > 0) {
+                    ctx.fillStyle = '#3b82f6'; // blue
+                } else {
+                    ctx.fillStyle = '#ef4444'; // red
+                }
+
+                ctx.fillRect(x, y - barHeight / 2, barW, barHeight);
+            }
+
+            // X Axis
+            ctx.fillStyle = '#a0a0a0';
+            ctx.textAlign = 'center';
+            ctx.fillText(formatMoney(min), padX, canvas.height - 10);
+            ctx.fillText(formatMoney(max), canvas.width - padX, canvas.height - 10);
+            ctx.fillText("0원", zeroX, canvas.height - 10);
+        }
+
+        // Add event listeners to redraw on input change
+        document.addEventListener('DOMContentLoaded', () => {
+            const inputs = document.querySelectorAll('input');
+            inputs.forEach(input => {
+                input.addEventListener('change', runSimulation);
+                if (input.type === 'range') {
+                    input.addEventListener('input', runSimulation);
+                }
+            });
+            // Initial run
+            setTimeout(runSimulation, 100);
+
+            window.addEventListener('resize', runSimulation);
+        });
+
+        // Initialize formatting on load
+        window.onload = function() {
+            const inputs = document.querySelectorAll('input[type=range]');
+            inputs.forEach(input => {
+                updateInput(input.id + '-val', input.value);
+            });
+        };
+    </script>
 
 </body>
 </html>
