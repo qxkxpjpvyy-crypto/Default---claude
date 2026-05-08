@@ -361,6 +361,14 @@
 
                     <div class="input-group">
                         <div class="input-header">
+                            <label class="input-label" for="inflation-rate">물가 상승률 (%)<br><span class="text-sm text-muted">매년 생활비가 증가하는 속도</span></label>
+                            <input type="text" id="inflation-rate-val" class="input-value" value="2.0" onchange="updateSliderFloat('inflation-rate', this.value)">
+                        </div>
+                        <input type="range" id="inflation-rate" min="0.0" max="10.0" step="0.1" value="2.0" oninput="updateInputFloat('inflation-rate-val', this.value)">
+                    </div>
+
+                    <div class="input-group">
+                        <div class="input-header">
                             <label class="input-label" for="income-growth">연간 소득 상승률 (%)<br><span class="text-sm text-muted">연봉 인상률 기대치</span></label>
                             <input type="text" id="income-growth-val" class="input-value" value="3.0" onchange="updateSliderFloat('income-growth', this.value)">
                         </div>
@@ -892,7 +900,8 @@
             const taxRate = getValFloat('income-tax-rate') / 100.0;
             const livingExpensesBase = getVal('living-expenses');
             const incomeGrowth = getValFloat('income-growth') / 100.0;
-            const incomeVol = getValFloat('income-volatility') / 100.0;
+                        const incomeVol = getValFloat('income-volatility') / 100.0;
+            const inflationRate = getValFloat('inflation-rate') / 100.0;
 
             const ltvRatio = getVal('ltv') / 100.0;
             const mortgageRate = getValFloat('mortgage-rate') / 100.0;
@@ -1025,8 +1034,8 @@
                     // --- Income & Free Cash Flow Update ---
                     // Income grows and has volatility
                     currentPretaxIncome *= (1 + incomeGrowth + incomeShock);
-                    // Living expenses grow at a base rate (e.g., inflation approximation ~ 2%)
-                    currentLivingExpenses *= 1.02;
+                                        // Living expenses grow at inflation rate
+                    currentLivingExpenses *= (1 + inflationRate);
 
                     let postTaxIncome = currentPretaxIncome * (1 - taxRate);
                     let freeCashFlow = postTaxIncome - currentLivingExpenses;
@@ -1545,7 +1554,7 @@ function formatMoney(amount) {
             <p class="text-sm text-muted">단순히 저축액을 고정하지 않고 세금과 생활비를 뺀 실질 여유자금을 추적합니다.</p>
             <div class="math-block">t년도 세전 소득 = (t-1년도 세전 소득) × (1 + 소득상승률 + 소득변동성 난수)
 t년도 세후 소득 = t년도 세전 소득 × (1 - 실효세율)
-t년도 기본 생활비 = (t-1년도 기본 생활비) × (1 + 물가상승률 2% 가정)
+t년도 기본 생활비 = (t-1년도 기본 생활비) × (1 + 물가상승률)
 
 당해 잉여 현금(FCF) = t년도 세후 소득 - t년도 기본 생활비
 * 이 잉여 현금에서 주택담보대출 원리금이나 월세를 납부하게 됩니다.</div>
