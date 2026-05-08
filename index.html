@@ -333,16 +333,50 @@
                         <input type="range" id="current-net-worth" min="0" max="3000000000" step="10000000" value="300000000" oninput="updateInput('current-net-worth-val', this.value)">
                     </div>
 
-                    <!-- 예상 월 저축액 -->
+
+                    <!-- 소득 및 현금흐름 가정 -->
                     <div class="input-group">
                         <div class="input-header">
-                            <label class="input-label" for="monthly-savings">예상 월 저축액 (원)</label>
-                            <input type="text" id="monthly-savings-val" class="input-value" value="2,000,000" onchange="updateSlider('monthly-savings', this.value)">
+                            <label class="input-label" for="pretax-income">현재 연간 세전 소득 (원)<br><span class="text-sm text-muted">DSR 한도 계산 및 세후 소득의 기준</span></label>
+                            <input type="text" id="pretax-income-val" class="input-value" value="80,000,000" onchange="updateSlider('pretax-income', this.value)">
                         </div>
-                        <input type="range" id="monthly-savings" min="0" max="10000000" step="100000" value="2000000" oninput="updateInput('monthly-savings-val', this.value)">
+                        <input type="range" id="pretax-income" min="20000000" max="500000000" step="1000000" value="80000000" oninput="updateInput('pretax-income-val', this.value)">
+                    </div>
+
+                    <div class="input-group">
+                        <div class="input-header">
+                            <label class="input-label" for="income-tax-rate">소득 실효세율 (%)<br><span class="text-sm text-muted">원천징수, 4대보험 등 공제 비율</span></label>
+                            <input type="text" id="income-tax-rate-val" class="input-value" value="15.0" onchange="updateSliderFloat('income-tax-rate', this.value)">
+                        </div>
+                        <input type="range" id="income-tax-rate" min="0.0" max="50.0" step="0.5" value="15.0" oninput="updateInputFloat('income-tax-rate-val', this.value)">
+                    </div>
+
+                    <div class="input-group">
+                        <div class="input-header">
+                            <label class="input-label" for="living-expenses">연간 기본 생활비 (원)<br><span class="text-sm text-muted">주거비 제외, 순수 소비액 (세후 소득에서 차감)</span></label>
+                            <input type="text" id="living-expenses-val" class="input-value" value="30,000,000" onchange="updateSlider('living-expenses', this.value)">
+                        </div>
+                        <input type="range" id="living-expenses" min="10000000" max="200000000" step="1000000" value="30000000" oninput="updateInput('living-expenses-val', this.value)">
+                    </div>
+
+                    <div class="input-group">
+                        <div class="input-header">
+                            <label class="input-label" for="income-growth">연간 소득 상승률 (%)<br><span class="text-sm text-muted">연봉 인상률 기대치</span></label>
+                            <input type="text" id="income-growth-val" class="input-value" value="3.0" onchange="updateSliderFloat('income-growth', this.value)">
+                        </div>
+                        <input type="range" id="income-growth" min="0.0" max="15.0" step="0.1" value="3.0" oninput="updateInputFloat('income-growth-val', this.value)">
+                    </div>
+
+                    <div class="input-group">
+                        <div class="input-header">
+                            <label class="input-label" for="income-volatility">소득 변동성 (%)<br><span class="text-sm text-muted">이직, 성과급 등에 따른 소득 불확실성</span></label>
+                            <input type="text" id="income-volatility-val" class="input-value" value="5.0" onchange="updateSliderFloat('income-volatility', this.value)">
+                        </div>
+                        <input type="range" id="income-volatility" min="0.0" max="30.0" step="0.1" value="5.0" oninput="updateInputFloat('income-volatility-val', this.value)">
                     </div>
 
                     <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 20px 0;">
+
 
                     <!-- 현재 거주 형태 -->
                     <div class="input-group">
@@ -854,7 +888,11 @@
             // --- Inputs ---
             const targetPrice = getVal('target-price');
             const currentNW = getVal('current-net-worth');
-            const monthlySavings = getVal('monthly-savings');
+                        const pretaxIncomeBase = getVal('pretax-income');
+            const taxRate = getValFloat('income-tax-rate') / 100.0;
+            const livingExpensesBase = getVal('living-expenses');
+            const incomeGrowth = getValFloat('income-growth') / 100.0;
+            const incomeVol = getValFloat('income-volatility') / 100.0;
 
             const ltvRatio = getVal('ltv') / 100.0;
             const mortgageRate = getValFloat('mortgage-rate') / 100.0;
@@ -917,15 +955,29 @@
                 let requestedLoan = targetPrice * ltvRatio;
                 let loanAmount = requestedLoan;
 
+                let monthlyMortgageRate = mortgageRate / 12.0;
+                let totalMortgageMonths = mortgageTerm * 12;
+
                 if (applyLTV) {
-                    let maxLTV = targetPrice * 0.7; // Hard limit for regulation
+                    // 1. LTV Limit (70%)
+                    let maxLTV = targetPrice * 0.7;
                     if (loanAmount > maxLTV) loanAmount = maxLTV;
+
+                    // 2. DSR Limit (40%)
+                    // Yearly payment cannot exceed 40% of Pre-tax Income
+                    // Yearly PMT = loan * (r * (1+r)^n) / ((1+r)^n - 1) * 12
+                    let maxYearlyPayment = pretaxIncomeBase * 0.40;
+
+                    // Reverse calculate max loan from maxYearlyPayment
+                    // Max Loan = (Max Yearly / 12) * ((1+r)^n - 1) / (r * (1+r)^n)
+                    let pmtFactor = (monthlyMortgageRate * Math.pow(1 + monthlyMortgageRate, totalMortgageMonths)) / (Math.pow(1 + monthlyMortgageRate, totalMortgageMonths) - 1);
+                    if (pmtFactor > 0) {
+                        let maxDSRLoan = (maxYearlyPayment / 12.0) / pmtFactor;
+                        if (loanAmount > maxDSRLoan) loanAmount = maxDSRLoan;
+                    }
                 }
 
                 // Amortization setup (원리금 균등 상환 방식 - Equal Principal and Interest)
-                // PMT = P * r * (1+r)^n / ((1+r)^n - 1)
-                let monthlyMortgageRate = mortgageRate / 12.0;
-                let totalMortgageMonths = mortgageTerm * 12;
                 let mortgagePMT = 0;
                 if (loanAmount > 0 && monthlyMortgageRate > 0) {
                     mortgagePMT = loanAmount * (monthlyMortgageRate * Math.pow(1 + monthlyMortgageRate, totalMortgageMonths)) / (Math.pow(1 + monthlyMortgageRate, totalMortgageMonths) - 1);
@@ -957,6 +1009,9 @@
                 let simInvShockSum = 0;
                 let simRentShockSum = 0;
 
+                                let currentPretaxIncome = pretaxIncomeBase;
+                let currentLivingExpenses = livingExpensesBase;
+
                 // Year by year simulation
                 for (let y = 0; y < years; y++) {
                     // Random shocks
@@ -964,7 +1019,17 @@
                     let aptShock = randomNormal() * aptVol;
                     let invShock = randomNormal() * invVol;
                     let rentShock = randomNormal() * rentVol;
-                    let jeonseRateShock = randomNormal() * jeonseRateVol;
+                                        let jeonseRateShock = randomNormal() * jeonseRateVol;
+                    let incomeShock = randomNormal() * incomeVol;
+
+                    // --- Income & Free Cash Flow Update ---
+                    // Income grows and has volatility
+                    currentPretaxIncome *= (1 + incomeGrowth + incomeShock);
+                    // Living expenses grow at a base rate (e.g., inflation approximation ~ 2%)
+                    currentLivingExpenses *= 1.02;
+
+                    let postTaxIncome = currentPretaxIncome * (1 - taxRate);
+                    let freeCashFlow = postTaxIncome - currentLivingExpenses;
 
                     simAptShockSum += aptShock;
                     simInvShockSum += invShock;
@@ -977,7 +1042,7 @@
                     if (buy_Liquid > 0) buy_Liquid *= (1 + invReturn + invShock);
 
                     // Yearly cashflow
-                    buy_Liquid += (monthlySavings * 12);
+                    buy_Liquid += freeCashFlow;
 
                     // Mortgage payments
                     let yearlyMortgagePayment = 0;
@@ -1001,7 +1066,7 @@
 
                     // --- RENT UPDATE ---
                     if (rent_Liquid > 0) rent_Liquid *= (1 + invReturn + invShock);
-                    rent_Liquid += (monthlySavings * 12);
+                    rent_Liquid += freeCashFlow;
                     rent_Liquid -= rentExtraCost; // Add user defined annual rent cost
 
                     if (isJeonse) {
@@ -1476,15 +1541,24 @@ function formatMoney(amount) {
 - 12억 초과분: 과세표준 비율 = (매도액 - 12억) / 매도액
 - 양도세 = 수익 × 과세표준 비율 × 단일세율(20%로 단순화 가정)</div>
 
-            <h3 style="color: var(--accent-blue); margin-top: 20px;">4. 순자산(Net Worth) 계산 구조</h3>
+            <h3 style="color: var(--accent-blue); margin-top: 20px;">4. 잉여 현금 흐름 (Free Cash Flow) 모델</h3>
+            <p class="text-sm text-muted">단순히 저축액을 고정하지 않고 세금과 생활비를 뺀 실질 여유자금을 추적합니다.</p>
+            <div class="math-block">t년도 세전 소득 = (t-1년도 세전 소득) × (1 + 소득상승률 + 소득변동성 난수)
+t년도 세후 소득 = t년도 세전 소득 × (1 - 실효세율)
+t년도 기본 생활비 = (t-1년도 기본 생활비) × (1 + 물가상승률 2% 가정)
+
+당해 잉여 현금(FCF) = t년도 세후 소득 - t년도 기본 생활비
+* 이 잉여 현금에서 주택담보대출 원리금이나 월세를 납부하게 됩니다.</div>
+
+            <h3 style="color: var(--accent-blue); margin-top: 20px;">5. 순자산(Net Worth) 계산 구조</h3>
             <div class="math-block">[구매 시나리오 (Buy)]
 초기 유동성 = 현재순자산 + 대출액 - 집값 - 취득세 - 매수부대비용
-매년 유동성 증감 = (투자수익 적용) + 연저축액 - 연간원리금상환액 - 보유세 - 유지보수비 - 화재보험료
+매년 유동성 증감 = (이전 유동성 × 투자수익률) + 당해 잉여현금(FCF) - 연간원리금상환액 - 보유세 - 유지보수비 - 화재보험료 - 구매부대지출(통근 등)
 최종 순자산 = 매도 집값 + 최종 유동성 - 잔여 대출금 - 양도세 - 매도부대비용
 
 [임대 시나리오 (Rent)]
 초기 유동성 = 현재순자산 + 전세대출액 - 보증금
-매년 유동성 증감 = (투자수익 적용) + 연저축액 - 연간임대료(또는 전세이자)
+매년 유동성 증감 = (이전 유동성 × 투자수익률) + 당해 잉여현금(FCF) - 연간임대료(또는 전세이자) - 임대부대지출(스트레스 등)
 계약 갱신(2년) = 보증금 및 월세 인상분 유동성에서 차감
 최종 순자산 = 최종 보증금 + 최종 유동성 - 전세대출액</div>
         </div>
@@ -1498,7 +1572,7 @@ function formatMoney(amount) {
             <h2 style="margin-bottom: 20px;">대한민국 규제 토글의 상세 영향</h2>
 
             <h3 style="color: var(--accent-green); margin-top: 10px;">1. LTV / DSR 대출 규제</h3>
-            <p class="text-sm text-muted">체크 해제 시: 무한정 대출이 가능하다고 가정하여 레버리지(대출)를 극대화할 수 있습니다.<br>체크 시: 집값의 70% 이상 대출이 불가하므로 그만큼 본인 현금(순자산)이 더 필요합니다.</p>
+            <p class="text-sm text-muted">체크 해제 시: 무한정 대출이 가능하다고 가정하여 레버리지(대출)를 극대화할 수 있습니다.<br>체크 시: 집값의 70% 이하(LTV)이면서, 연간 원리금 상환액이 세전 소득의 40% 이하(DSR)가 되도록 두 한도 중 더 깐깐한 기준으로 최대 대출액이 제한됩니다.</p>
 
             <h3 style="color: var(--accent-green); margin-top: 20px;">2. 취득세 누진세율</h3>
             <p class="text-sm text-muted">체크 해제 시: 집값에 관계없이 기본 세율(1%)만 적용됩니다.<br>체크 시: 집값이 6억~9억이면 점진적 증가, 9억 초과시 3%의 높은 취득세가 초기에 현금에서 빠져나갑니다.</p>
