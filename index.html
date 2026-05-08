@@ -361,6 +361,14 @@
 
                     <div class="input-group">
                         <div class="input-header">
+                            <label class="input-label" for="inflation-rate">물가 상승률 (%)<br><span class="text-sm text-muted">매년 생활비가 증가하는 속도</span></label>
+                            <input type="text" id="inflation-rate-val" class="input-value" value="2.0" onchange="updateSliderFloat('inflation-rate', this.value)">
+                        </div>
+                        <input type="range" id="inflation-rate" min="0.0" max="10.0" step="0.1" value="2.0" oninput="updateInputFloat('inflation-rate-val', this.value)">
+                    </div>
+
+                    <div class="input-group">
+                        <div class="input-header">
                             <label class="input-label" for="income-growth">연간 소득 상승률 (%)<br><span class="text-sm text-muted">연봉 인상률 기대치</span></label>
                             <input type="text" id="income-growth-val" class="input-value" value="3.0" onchange="updateSliderFloat('income-growth', this.value)">
                         </div>
@@ -679,7 +687,13 @@
                     </div>
 <div style="position: relative; width: 100%; height: 300px; background: var(--input-bg); border-radius: 8px; overflow: hidden; padding: 10px;">
                         <canvas id="dist-chart"></canvas>
-                        <div style="position: absolute; top: 10px; left: 10px; font-size: 0.8rem; font-weight: bold;">구매 우위 차액 분포 (원)</div>
+                        <div style="position: absolute; top: 10px; left: 10px; font-size: 0.8rem; font-weight: bold; display: flex; align-items: center; gap: 10px;">
+                            구매 우위 차액 분포 (원)
+                            <select id="dist-chart-type" onchange="runSimulation()" style="background: var(--panel-bg); color: var(--text-main); border: 1px solid var(--border-color); border-radius: 4px; padding: 2px 6px; font-size: 0.75rem;">
+                                <option value="histogram">막대 (히스토그램)</option>
+                                <option value="density">선 (밀도 곡선)</option>
+                            </select>
+                        </div>
                     </div>
                     <div style="position: relative; width: 100%; height: 300px; background: var(--input-bg); border-radius: 8px; overflow: hidden; padding: 10px;">
                         <canvas id="quant-chart"></canvas>
@@ -892,7 +906,8 @@
             const taxRate = getValFloat('income-tax-rate') / 100.0;
             const livingExpensesBase = getVal('living-expenses');
             const incomeGrowth = getValFloat('income-growth') / 100.0;
-            const incomeVol = getValFloat('income-volatility') / 100.0;
+                        const incomeVol = getValFloat('income-volatility') / 100.0;
+            const inflationRate = getValFloat('inflation-rate') / 100.0;
 
             const ltvRatio = getVal('ltv') / 100.0;
             const mortgageRate = getValFloat('mortgage-rate') / 100.0;
@@ -1025,8 +1040,8 @@
                     // --- Income & Free Cash Flow Update ---
                     // Income grows and has volatility
                     currentPretaxIncome *= (1 + incomeGrowth + incomeShock);
-                    // Living expenses grow at a base rate (e.g., inflation approximation ~ 2%)
-                    currentLivingExpenses *= 1.02;
+                                        // Living expenses grow at inflation rate
+                    currentLivingExpenses *= (1 + inflationRate);
 
                     let postTaxIncome = currentPretaxIncome * (1 - taxRate);
                     let freeCashFlow = postTaxIncome - currentLivingExpenses;
@@ -1140,6 +1155,7 @@
             results.differences.sort((a,b) => a-b);
 
 
+            window.lastResults = results;
             drawCharts(results, years);
             updateSummary(results);
         }
@@ -1317,7 +1333,12 @@ function formatMoney(amount) {
 
         function drawCharts(results, years) {
             drawPathChart(results, years);
-            drawHistogram(results.differences, 'dist-chart');
+            const chartType = document.getElementById('dist-chart-type').value;
+            if (chartType === 'histogram') {
+                drawHistogram(results.differences, 'dist-chart');
+            } else {
+                drawDensityCurve(results.differences, 'dist-chart');
+            }
             drawQuantileBarChart(results.differences, 'quant-chart');
         }
 
@@ -1397,6 +1418,135 @@ function formatMoney(amount) {
             ctx.fillText(formatMoney(max), logicWidth - pad, logicHeight - 10);
             if (min < 0 && max > 0) {
                 ctx.fillText("0원", pad + ((0 - min) / range) * w, logicHeight - 10);
+            }
+        }
+
+
+        function drawDensityCurve(data, canvasId) {
+            const canvas = document.getElementById(canvasId);
+            const ctx = canvas.getContext('2d');
+
+            const rect = canvas.parentElement.getBoundingClientRect();
+            const dpr = window.devicePixelRatio || 1;
+
+            canvas.width = (rect.width - 20) * dpr;
+            canvas.height = (rect.height - 20) * dpr;
+            canvas.style.width = `${rect.width - 20}px`;
+            canvas.style.height = `${rect.height - 20}px`;
+
+            ctx.scale(dpr, dpr);
+
+            const logicWidth = rect.width - 20;
+            const logicHeight = rect.height - 20;
+
+            ctx.clearRect(0, 0, logicWidth, logicHeight);
+
+            // Use slightly more bins for a smoother curve
+            const bins = 60;
+            const min = data[0];
+            const max = data[data.length - 1];
+            const range = max - min;
+            const binSize = range / bins;
+
+            let frequencies = new Array(bins).fill(0);
+            for (let val of data) {
+                let binIndex = Math.floor((val - min) / binSize);
+                if (binIndex >= bins) binIndex = bins - 1;
+                frequencies[binIndex]++;
+            }
+
+            // Smooth the frequencies (Simple moving average)
+            let smoothed = new Array(bins).fill(0);
+            for(let i=0; i<bins; i++) {
+                let sum = frequencies[i];
+                let count = 1;
+                if(i > 0) { sum += frequencies[i-1]; count++; }
+                if(i < bins-1) { sum += frequencies[i+1]; count++; }
+                smoothed[i] = sum / count;
+            }
+
+            const maxFreq = Math.max(...smoothed);
+            const pad = 30;
+            const w = logicWidth - (pad * 2);
+            const h = logicHeight - (pad * 2);
+
+            let zeroX = -1;
+            if (min < 0 && max > 0) {
+                zeroX = pad + ((0 - min) / range) * w;
+                ctx.beginPath();
+                ctx.setLineDash([5, 5]);
+                ctx.moveTo(zeroX, pad);
+                ctx.lineTo(zeroX, logicHeight - pad);
+                ctx.strokeStyle = '#666';
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+
+            // Draw area under curve with gradient based on 0-line
+            ctx.beginPath();
+            let points = [];
+            for (let i = 0; i < bins; i++) {
+                let barH = (smoothed[i] / maxFreq) * h;
+                let x = pad + (i / bins) * w + (w / bins / 2); // Center of bin
+                let y = logicHeight - pad - barH;
+                points.push({x: x, y: y});
+            }
+
+            // Fill shape
+            ctx.moveTo(pad, logicHeight - pad);
+            if (points.length > 0) {
+                ctx.lineTo(points[0].x, points[0].y);
+                for(let i=1; i<points.length; i++) {
+                    // Simple curve interpolation
+                    let xc = (points[i].x + points[i-1].x) / 2;
+                    let yc = (points[i].y + points[i-1].y) / 2;
+                    ctx.quadraticCurveTo(points[i-1].x, points[i-1].y, xc, yc);
+                }
+                ctx.lineTo(points[points.length-1].x, points[points.length-1].y);
+            }
+            ctx.lineTo(logicWidth - pad, logicHeight - pad);
+            ctx.closePath();
+
+            // Create gradient
+            let gradient = ctx.createLinearGradient(pad, 0, logicWidth - pad, 0);
+            if (zeroX !== -1) {
+                let zeroStop = (zeroX - pad) / w;
+                gradient.addColorStop(0, "rgba(16, 185, 129, 0.4)"); // Green
+                gradient.addColorStop(zeroStop, "rgba(16, 185, 129, 0.4)");
+                gradient.addColorStop(zeroStop, "rgba(59, 130, 246, 0.4)"); // Blue
+                gradient.addColorStop(1, "rgba(59, 130, 246, 0.4)");
+            } else if (min >= 0) {
+                gradient.addColorStop(0, "rgba(59, 130, 246, 0.4)");
+            } else {
+                gradient.addColorStop(0, "rgba(16, 185, 129, 0.4)");
+            }
+
+            ctx.fillStyle = gradient;
+            ctx.fill();
+
+            // Draw solid line on top
+            ctx.beginPath();
+            if (points.length > 0) {
+                ctx.moveTo(points[0].x, points[0].y);
+                for(let i=1; i<points.length; i++) {
+                    let xc = (points[i].x + points[i-1].x) / 2;
+                    let yc = (points[i].y + points[i-1].y) / 2;
+                    ctx.quadraticCurveTo(points[i-1].x, points[i-1].y, xc, yc);
+                }
+                ctx.lineTo(points[points.length-1].x, points[points.length-1].y);
+            }
+            ctx.strokeStyle = '#a0a0a0';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // X Axis Labels
+            ctx.fillStyle = '#a0a0a0';
+            ctx.font = '10px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(formatMoney(min), pad, logicHeight - 10);
+            ctx.fillText(formatMoney(max), logicWidth - pad, logicHeight - 10);
+            if (zeroX !== -1) {
+                ctx.fillText("0원", zeroX, logicHeight - 10);
             }
         }
 
@@ -1545,7 +1695,7 @@ function formatMoney(amount) {
             <p class="text-sm text-muted">단순히 저축액을 고정하지 않고 세금과 생활비를 뺀 실질 여유자금을 추적합니다.</p>
             <div class="math-block">t년도 세전 소득 = (t-1년도 세전 소득) × (1 + 소득상승률 + 소득변동성 난수)
 t년도 세후 소득 = t년도 세전 소득 × (1 - 실효세율)
-t년도 기본 생활비 = (t-1년도 기본 생활비) × (1 + 물가상승률 2% 가정)
+t년도 기본 생활비 = (t-1년도 기본 생활비) × (1 + 물가상승률)
 
 당해 잉여 현금(FCF) = t년도 세후 소득 - t년도 기본 생활비
 * 이 잉여 현금에서 주택담보대출 원리금이나 월세를 납부하게 됩니다.</div>
