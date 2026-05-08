@@ -15,6 +15,20 @@
             --accent-red: #ef4444;
             --border-color: #333333;
             --input-bg: #2a2a35;
+            --chart-grid: #333;
+        }
+
+        [data-theme="light"] {
+            --bg-color: #f3f4f6;
+            --panel-bg: #ffffff;
+            --text-main: #1f2937;
+            --text-muted: #6b7280;
+            --accent-blue: #2563eb;
+            --accent-green: #059669;
+            --accent-red: #dc2626;
+            --border-color: #e5e7eb;
+            --input-bg: #f9fafb;
+            --chart-grid: #e5e7eb;
         }
 
         * {
@@ -68,11 +82,9 @@
         .panel {
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
         }
-        .input-value {
-            background-color: #1a1a24;
-            color: #60a5fa;
-            border: 1px solid #3f3f46;
-        }
+        .input-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; gap: 10px; }
+        .input-label { font-size: 0.9rem; font-weight: 500; flex: 1; line-height: 1.4; }
+        .input-value { font-size: 0.9rem; color: var(--accent-blue); font-weight: bold; background: var(--input-bg); padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border-color); text-align: right; width: 120px; flex-shrink: 0; height: 32px; }
         input[type=range]::-webkit-slider-runnable-track {
             background: #3f3f46;
         }
@@ -162,8 +174,8 @@
 
         /* Input Controls */
         .input-group { margin-bottom: 16px; }
-        .input-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-        .input-label { font-size: 0.9rem; font-weight: 500; }
+
+
         .input-value { font-size: 0.9rem; color: var(--accent-blue); font-weight: bold; background: var(--input-bg); padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border-color); text-align: right; width: 120px;}
 
         input[type=range] {
@@ -260,10 +272,15 @@
     <div class="container">
         <!-- 왼쪽 입력 패널 -->
         <div class="left-col">
-            <div class="header-title">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <div class="header-title" style="margin-bottom: 0;">
                 임대 vs. 구매 <br>
                 <span class="text-sm text-muted">몬테카를로 시뮬레이션 (대한민국 규제 반영)</span>
             </div>
+            <button id="theme-toggle" onclick="toggleTheme()" style="background: var(--panel-bg); color: var(--text-main); border: 1px solid var(--border-color); padding: 8px 12px; border-radius: 8px; cursor: pointer; font-size: 1rem;">
+                ☀️ 라이트 모드
+            </button>
+        </div>
 
             <div class="panel">
                 <div class="panel-header">입력 변수 (Inputs)</div>
@@ -316,16 +333,50 @@
                         <input type="range" id="current-net-worth" min="0" max="3000000000" step="10000000" value="300000000" oninput="updateInput('current-net-worth-val', this.value)">
                     </div>
 
-                    <!-- 예상 월 저축액 -->
+
+                    <!-- 소득 및 현금흐름 가정 -->
                     <div class="input-group">
                         <div class="input-header">
-                            <label class="input-label" for="monthly-savings">예상 월 저축액 (원)</label>
-                            <input type="text" id="monthly-savings-val" class="input-value" value="2,000,000" onchange="updateSlider('monthly-savings', this.value)">
+                            <label class="input-label" for="pretax-income">현재 연간 세전 소득 (원)<br><span class="text-sm text-muted">DSR 한도 계산 및 세후 소득의 기준</span></label>
+                            <input type="text" id="pretax-income-val" class="input-value" value="80,000,000" onchange="updateSlider('pretax-income', this.value)">
                         </div>
-                        <input type="range" id="monthly-savings" min="0" max="10000000" step="100000" value="2000000" oninput="updateInput('monthly-savings-val', this.value)">
+                        <input type="range" id="pretax-income" min="20000000" max="500000000" step="1000000" value="80000000" oninput="updateInput('pretax-income-val', this.value)">
+                    </div>
+
+                    <div class="input-group">
+                        <div class="input-header">
+                            <label class="input-label" for="income-tax-rate">소득 실효세율 (%)<br><span class="text-sm text-muted">원천징수, 4대보험 등 공제 비율</span></label>
+                            <input type="text" id="income-tax-rate-val" class="input-value" value="15.0" onchange="updateSliderFloat('income-tax-rate', this.value)">
+                        </div>
+                        <input type="range" id="income-tax-rate" min="0.0" max="50.0" step="0.5" value="15.0" oninput="updateInputFloat('income-tax-rate-val', this.value)">
+                    </div>
+
+                    <div class="input-group">
+                        <div class="input-header">
+                            <label class="input-label" for="living-expenses">연간 기본 생활비 (원)<br><span class="text-sm text-muted">주거비 제외, 순수 소비액 (세후 소득에서 차감)</span></label>
+                            <input type="text" id="living-expenses-val" class="input-value" value="30,000,000" onchange="updateSlider('living-expenses', this.value)">
+                        </div>
+                        <input type="range" id="living-expenses" min="10000000" max="200000000" step="1000000" value="30000000" oninput="updateInput('living-expenses-val', this.value)">
+                    </div>
+
+                    <div class="input-group">
+                        <div class="input-header">
+                            <label class="input-label" for="income-growth">연간 소득 상승률 (%)<br><span class="text-sm text-muted">연봉 인상률 기대치</span></label>
+                            <input type="text" id="income-growth-val" class="input-value" value="3.0" onchange="updateSliderFloat('income-growth', this.value)">
+                        </div>
+                        <input type="range" id="income-growth" min="0.0" max="15.0" step="0.1" value="3.0" oninput="updateInputFloat('income-growth-val', this.value)">
+                    </div>
+
+                    <div class="input-group">
+                        <div class="input-header">
+                            <label class="input-label" for="income-volatility">소득 변동성 (%)<br><span class="text-sm text-muted">이직, 성과급 등에 따른 소득 불확실성</span></label>
+                            <input type="text" id="income-volatility-val" class="input-value" value="5.0" onchange="updateSliderFloat('income-volatility', this.value)">
+                        </div>
+                        <input type="range" id="income-volatility" min="0.0" max="30.0" step="0.1" value="5.0" oninput="updateInputFloat('income-volatility-val', this.value)">
                     </div>
 
                     <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 20px 0;">
+
 
                     <!-- 현재 거주 형태 -->
                     <div class="input-group">
@@ -485,7 +536,26 @@
 
                     <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 20px 0;">
 
-                    <!-- 시뮬레이션 설정 -->
+
+                    <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 20px 0;">
+
+                    <!-- 추가 부대 비용 (통근, 생활 등) -->
+                    <div class="input-group">
+                        <div class="input-header">
+                            <label class="input-label" for="rent-extra-cost">임대 시 연간 부대 지출 (원)<br><span class="text-sm text-muted">통근 비용, 전세금 협상 스트레스(화폐화) 등</span></label>
+                            <input type="text" id="rent-extra-cost-val" class="input-value" value="1,000,000" onchange="updateSlider('rent-extra-cost', this.value)">
+                        </div>
+                        <input type="range" id="rent-extra-cost" min="0" max="20000000" step="100000" value="1000000" oninput="updateInput('rent-extra-cost-val', this.value)">
+                    </div>
+
+                    <div class="input-group">
+                        <div class="input-header">
+                            <label class="input-label" for="buy-extra-cost">구매 시 연간 부대 지출 (원)<br><span class="text-sm text-muted">통근 시간/거리 증가에 따른 추가 비용 등</span></label>
+                            <input type="text" id="buy-extra-cost-val" class="input-value" value="3,000,000" onchange="updateSlider('buy-extra-cost', this.value)">
+                        </div>
+                        <input type="range" id="buy-extra-cost" min="0" max="20000000" step="100000" value="3000000" oninput="updateInput('buy-extra-cost-val', this.value)">
+                    </div>
+<!-- 시뮬레이션 설정 -->
                     <div class="input-group">
                         <div class="input-header">
                             <label class="input-label" for="analysis-years">분석 기간 (년)</label>
@@ -574,6 +644,21 @@
                             <span class="text-sm">중앙값(Median) 순자산 (임대)</span>
                             <span id="median-rent" style="font-size: 1.25rem; font-weight: bold;">--원</span>
                         </div>
+
+                    <div style="margin-top: 20px; background: var(--input-bg); padding: 12px; border-radius: 8px;">
+                        <span class="text-sm" style="font-weight: bold; display: block; margin-bottom: 8px;">변수 민감도 (상관계수)</span>
+                        <div style="display: flex; justify-content: space-between; font-size: 0.85rem; border-bottom: 1px solid var(--border-color); padding-bottom: 4px;">
+                            <span>아파트 수익률</span><span id="sens-apt">--</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; font-size: 0.85rem; border-bottom: 1px solid var(--border-color); padding-bottom: 4px; padding-top: 4px;">
+                            <span>투자 수익률</span><span id="sens-inv">--</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; font-size: 0.85rem; padding-top: 4px;">
+                            <span>임대료/금리 상승</span><span id="sens-rent">--</span>
+                        </div>
+                        <div class="text-sm text-muted" style="font-size: 0.7rem; margin-top: 8px;">
+                            * +1에 가까울수록 해당 변수가 오를 때 구매가 유리해집니다.
+                        </div>
                     </div>
 
                 </div>
@@ -584,7 +669,15 @@
                 <div id="charts-container" style="display: flex; flex-direction: column; gap: 20px;">
                     <!-- 캔버스 차트들이 여기에 추가될 예정 -->
 
-                    <div style="position: relative; width: 100%; height: 300px; background: var(--input-bg); border-radius: 8px; overflow: hidden; padding: 10px;">
+
+                    <div style="position: relative; width: 100%; height: 350px; background: var(--input-bg); border-radius: 8px; overflow: hidden; padding: 10px;">
+                        <canvas id="path-chart"></canvas>
+                        <div style="position: absolute; top: 10px; left: 10px; font-size: 0.9rem; font-weight: bold;">순자산 경로 (중앙값)</div>
+                        <div style="position: absolute; bottom: 10px; width: 100%; text-align: center; font-size: 0.8rem;">
+                            <span style="color: var(--accent-blue);">● 구매</span> &nbsp;&nbsp;&nbsp; <span style="color: var(--accent-green);">● 임대</span>
+                        </div>
+                    </div>
+<div style="position: relative; width: 100%; height: 300px; background: var(--input-bg); border-radius: 8px; overflow: hidden; padding: 10px;">
                         <canvas id="dist-chart"></canvas>
                         <div style="position: absolute; top: 10px; left: 10px; font-size: 0.8rem; font-weight: bold;">구매 우위 차액 분포 (원)</div>
                     </div>
@@ -608,14 +701,24 @@
                     이렇게 수천 번의 주사위를 던져 얻은 결과를 모아보면, <strong>"내가 집을 샀을 때 전월세로 사는 것보다 유리할 확률은 어느 정도인지", "가장 운이 나빴을 때(하위 10%)와 운이 좋았을 때(상위 10%) 내 재산은 어떻게 달라지는지"</strong>를 통계적으로 예측할 수 있습니다.
                 </p>
 
+
                 <div class="panel-header" style="font-size: 1.1rem; margin-top: 20px;">결과 해석 방법</div>
                 <p class="text-sm text-muted">
                     • <strong>구매가 유리할 확률:</strong> 전체 시뮬레이션 중, 집을 샀을 때의 최종 순자산이 임대로 살면서 남은 돈을 투자했을 때의 순자산보다 높게 나온 횟수의 비율입니다. 50%가 넘으면 구매가 수학적으로 더 유리한 선택일 가능성이 높다는 뜻입니다.<br><br>
-                    • <strong>파란색/초록색 그래프 (분포도):</strong> 구매했을 때와 임대했을 때의 자산 차이를 보여줍니다. 파란색 영역(0원 기준 오른쪽)은 구매가 이득이었던 경우, 초록색 영역(왼쪽)은 임대가 이득이었던 경우입니다. 산이 오른쪽으로 치우쳐 있을수록 구매가 압도적으로 유리함을 의미합니다.<br><br>
-                    • <strong>막대 차트 (분위수):</strong>
-                    <br>&nbsp;&nbsp;- <strong>P10 (하위 10%):</strong> 운이 매우 나빴을 때(집값이 폭락하거나 주식 투자가 대박 났을 때) 구매 시 얼마나 손해를 보는지 보여줍니다.
-                    <br>&nbsp;&nbsp;- <strong>중앙값/평균:</strong> 가장 현실적이고 평균적인 미래의 자산 격차입니다.
-                    <br>&nbsp;&nbsp;- <strong>P90 (상위 10%):</strong> 운이 매우 좋았을 때(집값이 폭등했을 때) 구매 시 얼마나 이득을 보는지 보여줍니다.
+                    • <strong>순자산 경로 (중앙값):</strong> 매년 구매와 임대 시나리오에서 평균적으로 자산이 어떻게 불어나는지 보여주는 그래프입니다.<br><br>
+                    • <strong>구매 vs 임대 이익 분포 (막대그래프):</strong> 파란색 영역(0원 기준 오른쪽)은 구매가 이득이었던 경우, 초록색 영역(왼쪽)은 임대가 이득이었던 경우입니다. 산이 오른쪽으로 치우쳐 있을수록 구매가 압도적으로 유리함을 의미합니다.<br><br>
+                    • <strong>구매 우위 분위수 분석:</strong><br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;- <strong>P10 (하위 10%):</strong> 운이 매우 나빴을 때(집값이 폭락하거나 투자수익이 최악일 때) 구매 시 얼마나 손해를 보는지 보여줍니다.<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;- <strong>중앙값/평균:</strong> 가장 현실적이고 평균적인 미래의 자산 격차입니다.<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;- <strong>P90 (상위 10%):</strong> 운이 매우 좋았을 때(집값이 폭등했을 때) 구매 시 얼마나 이득을 보는지 보여줍니다.
+                </p>
+
+                <div class="panel-header" style="font-size: 1.1rem; margin-top: 20px;">입력 가이드: 변동성(표준편차) 구하는 법</div>
+                <p class="text-sm text-muted">
+                    "변동성"은 통계학의 <strong>표준편차</strong>를 의미합니다. 과거 데이터를 바탕으로 예상되는 불확실성을 넣으시면 됩니다.<br>
+                    • <strong>아파트:</strong> 한국부동산원이나 KB부동산 통계에서 과거 10년치 연간 수익률을 엑셀로 다운받아, <code>=STDEV()</code> 함수를 적용하면 됩니다. 보통 서울 아파트는 7~10% 내외입니다.<br>
+                    • <strong>대체투자:</strong> 예적금만 하신다면 0%에 가깝고, 주식(S&P500 등) 비중이 높다면 15~20% 수준으로 입력하세요.
+                </p>
 
                 <div class="panel-header" style="font-size: 1.1rem; margin-top: 20px;">주요 변수가 결과에 미치는 영향</div>
                 <p class="text-sm text-muted">
@@ -624,13 +727,31 @@
                     • <strong>대출 비율(LTV)과 금리:</strong> 대출을 많이 받을수록(레버리지) 집값이 오를 때의 수익도 커지지만, 집값이 떨어질 때의 손실도 커집니다. 또한 금리가 높을수록 매달 나가는 이자 비용이 커져 구매의 장점이 줄어듭니다.<br>
                     • <strong>변동성(위험도):</strong> 값이 클수록 그래프(분포)가 양옆으로 넓게 퍼집니다. 즉, 대박이 날 확률과 쪽박을 찰 확률이 동시에 높아집니다.<br>
                     <br>
-                    <button onclick="openModal()" style="background: var(--accent-blue); color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 0.9rem; font-weight: bold;">상세 계산 수식 보기 (팝업)</button>
+
+                    <div style="display: flex; gap: 10px; margin-top: 15px;">
+                        <button onclick="openModal()" style="background: var(--accent-blue); color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 0.9rem; font-weight: bold;">상세 계산 수식 보기</button>
+                        <button onclick="openRegModal()" style="background: var(--accent-green); color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 0.9rem; font-weight: bold;">규제 체크박스 영향 보기</button>
+                    </div>
+
                 </p>
             </div>
         </div>
     </div>
 
     <script>
+
+        function toggleTheme() {
+            const body = document.documentElement;
+            if (body.getAttribute('data-theme') === 'light') {
+                body.removeAttribute('data-theme');
+                document.getElementById('theme-toggle').innerText = '☀️ 라이트 모드';
+            } else {
+                body.setAttribute('data-theme', 'light');
+                document.getElementById('theme-toggle').innerText = '🌙 다크 모드';
+            }
+            runSimulation(); // Redraw charts with new colors
+        }
+
         function formatNumber(num) {
             return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
         }
@@ -767,7 +888,11 @@
             // --- Inputs ---
             const targetPrice = getVal('target-price');
             const currentNW = getVal('current-net-worth');
-            const monthlySavings = getVal('monthly-savings');
+                        const pretaxIncomeBase = getVal('pretax-income');
+            const taxRate = getValFloat('income-tax-rate') / 100.0;
+            const livingExpensesBase = getVal('living-expenses');
+            const incomeGrowth = getValFloat('income-growth') / 100.0;
+            const incomeVol = getValFloat('income-volatility') / 100.0;
 
             const ltvRatio = getVal('ltv') / 100.0;
             const mortgageRate = getValFloat('mortgage-rate') / 100.0;
@@ -795,6 +920,9 @@
             const invVol = getValFloat('inv-volatility') / 100.0;
 
             // Costs
+            const rentExtraCost = getVal('rent-extra-cost');
+            const buyExtraCost = getVal('buy-extra-cost');
+
             const costMaintenance = getValFloat('cost-maintenance') / 100.0;
             const costInsurance = getValFloat('cost-insurance') / 100.0;
             const costBuying = getValFloat('cost-buying') / 100.0;
@@ -809,11 +937,16 @@
             const years = getVal('analysis-years');
             const simCount = getVal('sim-count');
 
+
             let results = {
                 buyFinalNW: [],
                 rentFinalNW: [],
-                differences: []
+                differences: [],
+                buyPaths: [], // [simCount][years]
+                rentPaths: [], // [simCount][years]
+                shocks: [] // [simCount] => { apt, inv, rent }
             };
+
 
             for (let s = 0; s < simCount; s++) {
                 // --- BUY SCENARIO ---
@@ -822,15 +955,29 @@
                 let requestedLoan = targetPrice * ltvRatio;
                 let loanAmount = requestedLoan;
 
+                let monthlyMortgageRate = mortgageRate / 12.0;
+                let totalMortgageMonths = mortgageTerm * 12;
+
                 if (applyLTV) {
-                    let maxLTV = targetPrice * 0.7; // Hard limit for regulation
+                    // 1. LTV Limit (70%)
+                    let maxLTV = targetPrice * 0.7;
                     if (loanAmount > maxLTV) loanAmount = maxLTV;
+
+                    // 2. DSR Limit (40%)
+                    // Yearly payment cannot exceed 40% of Pre-tax Income
+                    // Yearly PMT = loan * (r * (1+r)^n) / ((1+r)^n - 1) * 12
+                    let maxYearlyPayment = pretaxIncomeBase * 0.40;
+
+                    // Reverse calculate max loan from maxYearlyPayment
+                    // Max Loan = (Max Yearly / 12) * ((1+r)^n - 1) / (r * (1+r)^n)
+                    let pmtFactor = (monthlyMortgageRate * Math.pow(1 + monthlyMortgageRate, totalMortgageMonths)) / (Math.pow(1 + monthlyMortgageRate, totalMortgageMonths) - 1);
+                    if (pmtFactor > 0) {
+                        let maxDSRLoan = (maxYearlyPayment / 12.0) / pmtFactor;
+                        if (loanAmount > maxDSRLoan) loanAmount = maxDSRLoan;
+                    }
                 }
 
                 // Amortization setup (원리금 균등 상환 방식 - Equal Principal and Interest)
-                // PMT = P * r * (1+r)^n / ((1+r)^n - 1)
-                let monthlyMortgageRate = mortgageRate / 12.0;
-                let totalMortgageMonths = mortgageTerm * 12;
                 let mortgagePMT = 0;
                 if (loanAmount > 0 && monthlyMortgageRate > 0) {
                     mortgagePMT = loanAmount * (monthlyMortgageRate * Math.pow(1 + monthlyMortgageRate, totalMortgageMonths)) / (Math.pow(1 + monthlyMortgageRate, totalMortgageMonths) - 1);
@@ -855,13 +1002,38 @@
                 // Initial liquidity = Net Worth + Jeonse Loan - Deposit
                 let rent_Liquid = rent_NW + currentJeonseLoan - currentRentDeposit;
 
+                                let simBuyPath = [];
+                let simRentPath = [];
+
+                                let simAptShockSum = 0;
+                let simInvShockSum = 0;
+                let simRentShockSum = 0;
+
+                                let currentPretaxIncome = pretaxIncomeBase;
+                let currentLivingExpenses = livingExpensesBase;
+
                 // Year by year simulation
                 for (let y = 0; y < years; y++) {
                     // Random shocks
+                                        // Random shocks
                     let aptShock = randomNormal() * aptVol;
                     let invShock = randomNormal() * invVol;
                     let rentShock = randomNormal() * rentVol;
-                    let jeonseRateShock = randomNormal() * jeonseRateVol;
+                                        let jeonseRateShock = randomNormal() * jeonseRateVol;
+                    let incomeShock = randomNormal() * incomeVol;
+
+                    // --- Income & Free Cash Flow Update ---
+                    // Income grows and has volatility
+                    currentPretaxIncome *= (1 + incomeGrowth + incomeShock);
+                    // Living expenses grow at a base rate (e.g., inflation approximation ~ 2%)
+                    currentLivingExpenses *= 1.02;
+
+                    let postTaxIncome = currentPretaxIncome * (1 - taxRate);
+                    let freeCashFlow = postTaxIncome - currentLivingExpenses;
+
+                    simAptShockSum += aptShock;
+                    simInvShockSum += invShock;
+                    simRentShockSum += isJeonse ? jeonseRateShock : rentShock;
 
                     // --- BUY UPDATE ---
                     houseVal *= (1 + aptGrowth + aptShock);
@@ -870,7 +1042,7 @@
                     if (buy_Liquid > 0) buy_Liquid *= (1 + invReturn + invShock);
 
                     // Yearly cashflow
-                    buy_Liquid += (monthlySavings * 12);
+                    buy_Liquid += freeCashFlow;
 
                     // Mortgage payments
                     let yearlyMortgagePayment = 0;
@@ -889,11 +1061,13 @@
                     buy_Liquid -= calculateYearlyHoldingCost(houseVal, applyPropTax);
                     buy_Liquid -= (houseVal * costMaintenance);
                     buy_Liquid -= (houseVal * costInsurance);
+                    buy_Liquid -= buyExtraCost; // Add user defined annual buy cost
 
 
                     // --- RENT UPDATE ---
                     if (rent_Liquid > 0) rent_Liquid *= (1 + invReturn + invShock);
-                    rent_Liquid += (monthlySavings * 12);
+                    rent_Liquid += freeCashFlow;
+                    rent_Liquid -= rentExtraCost; // Add user defined annual rent cost
 
                     if (isJeonse) {
                         // Pay jeonse loan interest
@@ -920,6 +1094,13 @@
                             currentMonthlyRent *= (1 + actualRentGrowth);
                         }
                     }
+
+                    // Track End of Year NW (approximated value)
+                    let currentBuyNW = houseVal + buy_Liquid - remainingLoan;
+                    let currentRentNW = rent_Liquid + currentRentDeposit - currentJeonseLoan;
+                    simBuyPath.push(currentBuyNW);
+                    simRentPath.push(currentRentNW);
+
                 }
 
                 // --- End of Simulation Liquidation ---
@@ -942,16 +1123,24 @@
                 // RENT: Get deposit back, pay off jeonse loan
                 let finalRentNW = rent_Liquid + currentRentDeposit - currentJeonseLoan;
 
+
                 results.buyFinalNW.push(finalBuyNW);
                 results.rentFinalNW.push(finalRentNW);
                 results.differences.push(finalBuyNW - finalRentNW);
+                                results.buyPaths.push(simBuyPath);
+                results.rentPaths.push(simRentPath);
+                results.shocks.push({ apt: simAptShockSum, inv: simInvShockSum, rent: simRentShockSum });
+
             }
 
+
+            results.originalDifferences = [...results.differences];
             results.buyFinalNW.sort((a,b) => a-b);
             results.rentFinalNW.sort((a,b) => a-b);
             results.differences.sort((a,b) => a-b);
 
-            drawCharts(results);
+
+            drawCharts(results, years);
             updateSummary(results);
         }
 function formatMoney(amount) {
@@ -983,6 +1172,23 @@ function formatMoney(amount) {
             }
         }
 
+
+        function calcCorrelation(xArray, yArray) {
+            let n = xArray.length;
+            let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0, sumY2 = 0;
+            for(let i=0; i<n; i++) {
+                sumX += xArray[i];
+                sumY += yArray[i];
+                sumXY += (xArray[i] * yArray[i]);
+                sumX2 += (xArray[i] * xArray[i]);
+                sumY2 += (yArray[i] * yArray[i]);
+            }
+            let numerator = (n * sumXY) - (sumX * sumY);
+            let denom = Math.sqrt((n * sumX2 - sumX*sumX) * (n * sumY2 - sumY*sumY));
+            if(denom === 0) return 0;
+            return numerator / denom;
+        }
+
         function updateSummary(results) {
             let buyBetterCount = results.differences.filter(d => d > 0).length;
             let prob = (buyBetterCount / results.differences.length) * 100;
@@ -992,10 +1198,125 @@ function formatMoney(amount) {
             let medianRent = getQuantile(results.rentFinalNW, 0.5);
 
             document.getElementById('median-buy').innerText = formatMoney(medianBuy);
+
+            document.getElementById('median-buy').innerText = formatMoney(medianBuy);
             document.getElementById('median-rent').innerText = formatMoney(medianRent);
+
+            // Calculate Sensitivities (Correlation of shock sum vs final Difference)
+            // Warning: results are sorted! We need to keep original order to correlate properly.
+
+            let diffs = results.originalDifferences;
+            let aptShocks = results.shocks.map(s => s.apt);
+            let invShocks = results.shocks.map(s => s.inv);
+            let rentShocks = results.shocks.map(s => s.rent);
+
+            let corrApt = calcCorrelation(aptShocks, diffs);
+            let corrInv = calcCorrelation(invShocks, diffs);
+            let corrRent = calcCorrelation(rentShocks, diffs);
+
+            document.getElementById('sens-apt').innerText = corrApt.toFixed(2);
+            document.getElementById('sens-inv').innerText = corrInv.toFixed(2);
+            document.getElementById('sens-rent').innerText = corrRent.toFixed(2);
+
+
         }
 
-        function drawCharts(results) {
+
+        function drawPathChart(results, years) {
+            const canvas = document.getElementById('path-chart');
+            const ctx = canvas.getContext('2d');
+
+            const rect = canvas.parentElement.getBoundingClientRect();
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = (rect.width - 20) * dpr;
+            canvas.height = (rect.height - 40) * dpr; // Make room for legend
+            canvas.style.width = `${rect.width - 20}px`;
+            canvas.style.height = `${rect.height - 40}px`;
+            ctx.scale(dpr, dpr);
+
+            const logicWidth = rect.width - 20;
+            const logicHeight = rect.height - 40;
+            ctx.clearRect(0, 0, logicWidth, logicHeight);
+
+            // Calculate medians for each year
+            let medianBuyPath = [];
+            let medianRentPath = [];
+            for(let y = 0; y < years; y++) {
+                let buyY = results.buyPaths.map(p => p[y]).sort((a,b)=>a-b);
+                let rentY = results.rentPaths.map(p => p[y]).sort((a,b)=>a-b);
+                medianBuyPath.push(getQuantile(buyY, 0.5));
+                medianRentPath.push(getQuantile(rentY, 0.5));
+            }
+
+            const padX = 50;
+            const padY = 40;
+            const w = logicWidth - padX * 2;
+            const h = logicHeight - padY * 2;
+
+            let minVal = Math.min(...medianBuyPath, ...medianRentPath, 0);
+            let maxVal = Math.max(...medianBuyPath, ...medianRentPath);
+            // Add some headroom
+            maxVal = maxVal * 1.1;
+
+            // Draw Grid
+            ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--chart-grid').trim();
+            ctx.lineWidth = 1;
+            ctx.setLineDash([4, 4]);
+
+            ctx.fillStyle = '#a0a0a0';
+            ctx.font = '10px Arial';
+            ctx.textAlign = 'right';
+            ctx.textBaseline = 'middle';
+
+            for(let i=0; i<=4; i++) {
+                let y = padY + (h - (i/4)*h);
+                let val = minVal + (i/4)*(maxVal - minVal);
+
+                ctx.beginPath();
+                ctx.moveTo(padX, y);
+                ctx.lineTo(padX + w, y);
+                ctx.stroke();
+
+                ctx.fillText(formatMoney(val), padX - 10, y);
+            }
+
+            // Draw X Axis Labels (Years)
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
+            for(let y=0; y<years; y+= Math.ceil(years/10)) {
+                let x = padX + (y / (years-1)) * w;
+
+                ctx.beginPath();
+                ctx.moveTo(x, padY);
+                ctx.lineTo(x, padY + h);
+                ctx.stroke();
+
+                ctx.fillText((y+1) + '년', x, padY + h + 10);
+            }
+
+            ctx.setLineDash([]);
+
+            // Helper to draw line
+            function drawLine(data, color) {
+                ctx.beginPath();
+                for(let y=0; y<years; y++) {
+                    let x = padX + (y / (years-1)) * w;
+                    let yPos = padY + h - ((data[y] - minVal) / (maxVal - minVal)) * h;
+                    if(y===0) ctx.moveTo(x, yPos);
+                    else ctx.lineTo(x, yPos);
+                }
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 3;
+                ctx.stroke();
+            }
+
+            // Matches reference image colors
+            drawLine(medianBuyPath, '#3b82f6'); // Blue
+            drawLine(medianRentPath, '#10b981'); // Green
+        }
+
+        function drawCharts(results, years) {
+            drawPathChart(results, years);
             drawHistogram(results.differences, 'dist-chart');
             drawQuantileBarChart(results.differences, 'quant-chart');
         }
@@ -1220,21 +1541,54 @@ function formatMoney(amount) {
 - 12억 초과분: 과세표준 비율 = (매도액 - 12억) / 매도액
 - 양도세 = 수익 × 과세표준 비율 × 단일세율(20%로 단순화 가정)</div>
 
-            <h3 style="color: var(--accent-blue); margin-top: 20px;">4. 순자산(Net Worth) 계산 구조</h3>
+            <h3 style="color: var(--accent-blue); margin-top: 20px;">4. 잉여 현금 흐름 (Free Cash Flow) 모델</h3>
+            <p class="text-sm text-muted">단순히 저축액을 고정하지 않고 세금과 생활비를 뺀 실질 여유자금을 추적합니다.</p>
+            <div class="math-block">t년도 세전 소득 = (t-1년도 세전 소득) × (1 + 소득상승률 + 소득변동성 난수)
+t년도 세후 소득 = t년도 세전 소득 × (1 - 실효세율)
+t년도 기본 생활비 = (t-1년도 기본 생활비) × (1 + 물가상승률 2% 가정)
+
+당해 잉여 현금(FCF) = t년도 세후 소득 - t년도 기본 생활비
+* 이 잉여 현금에서 주택담보대출 원리금이나 월세를 납부하게 됩니다.</div>
+
+            <h3 style="color: var(--accent-blue); margin-top: 20px;">5. 순자산(Net Worth) 계산 구조</h3>
             <div class="math-block">[구매 시나리오 (Buy)]
 초기 유동성 = 현재순자산 + 대출액 - 집값 - 취득세 - 매수부대비용
-매년 유동성 증감 = (투자수익 적용) + 연저축액 - 연간원리금상환액 - 보유세 - 유지보수비 - 화재보험료
+매년 유동성 증감 = (이전 유동성 × 투자수익률) + 당해 잉여현금(FCF) - 연간원리금상환액 - 보유세 - 유지보수비 - 화재보험료 - 구매부대지출(통근 등)
 최종 순자산 = 매도 집값 + 최종 유동성 - 잔여 대출금 - 양도세 - 매도부대비용
 
 [임대 시나리오 (Rent)]
 초기 유동성 = 현재순자산 + 전세대출액 - 보증금
-매년 유동성 증감 = (투자수익 적용) + 연저축액 - 연간임대료(또는 전세이자)
+매년 유동성 증감 = (이전 유동성 × 투자수익률) + 당해 잉여현금(FCF) - 연간임대료(또는 전세이자) - 임대부대지출(스트레스 등)
 계약 갱신(2년) = 보증금 및 월세 인상분 유동성에서 차감
 최종 순자산 = 최종 보증금 + 최종 유동성 - 전세대출액</div>
         </div>
     </div>
 
+
+    <!-- 규제 모달 -->
+    <div id="regModal" class="modal-overlay">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeRegModal()">&times;</button>
+            <h2 style="margin-bottom: 20px;">대한민국 규제 토글의 상세 영향</h2>
+
+            <h3 style="color: var(--accent-green); margin-top: 10px;">1. LTV / DSR 대출 규제</h3>
+            <p class="text-sm text-muted">체크 해제 시: 무한정 대출이 가능하다고 가정하여 레버리지(대출)를 극대화할 수 있습니다.<br>체크 시: 집값의 70% 이하(LTV)이면서, 연간 원리금 상환액이 세전 소득의 40% 이하(DSR)가 되도록 두 한도 중 더 깐깐한 기준으로 최대 대출액이 제한됩니다.</p>
+
+            <h3 style="color: var(--accent-green); margin-top: 20px;">2. 취득세 누진세율</h3>
+            <p class="text-sm text-muted">체크 해제 시: 집값에 관계없이 기본 세율(1%)만 적용됩니다.<br>체크 시: 집값이 6억~9억이면 점진적 증가, 9억 초과시 3%의 높은 취득세가 초기에 현금에서 빠져나갑니다.</p>
+
+            <h3 style="color: var(--accent-green); margin-top: 20px;">3. 재산세 및 종합부동산세</h3>
+            <p class="text-sm text-muted">체크 해제 시: 매년 발생하는 막대한 보유세가 면제되어 구매 시나리오의 현금 흐름이 크게 개선됩니다.<br>체크 시: 시세 12억 초과분에 대해 종부세가 발생하여 매년 현금(투자금)이 줄어듭니다.</p>
+
+            <h3 style="color: var(--accent-green); margin-top: 20px;">4. 1세대 1주택 비과세</h3>
+            <p class="text-sm text-muted">체크 해제 시: 20% 단일 세율로 전액 양도세가 부과되어 최종 매도 시 순자산이 크게 감소합니다.<br>체크 시: 12억까지는 세금이 0원이며, 12억 초과 수익에 대해서만 세금이 발생하므로 구매에 압도적으로 유리한 한국만의 강력한 혜택이 적용됩니다.</p>
+        </div>
+    </div>
+
     <script>
+        function openRegModal() { document.getElementById('regModal').style.display = 'flex'; }
+        function closeRegModal() { document.getElementById('regModal').style.display = 'none'; }
+
         function openModal() { document.getElementById('mathModal').style.display = 'flex'; }
         function closeModal() { document.getElementById('mathModal').style.display = 'none'; }
     </script>
