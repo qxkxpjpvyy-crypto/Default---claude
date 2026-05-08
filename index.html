@@ -873,8 +873,8 @@
             return tax;
         }
 
-        function calculateSellingCost(buyPrice, sellPrice, hasCapGainsTax) {
-            let brokerFee = sellPrice * 0.005; // 중개수수료 0.5% 가정
+        function calculateSellingCost(buyPrice, sellPrice, hasCapGainsTax, brokerFeeRate = 0.005) {
+            let brokerFee = sellPrice * brokerFeeRate;
             let profit = sellPrice - buyPrice - brokerFee;
             let capGainsTax = 0;
 
@@ -1120,20 +1120,8 @@
 
                 // --- End of Simulation Liquidation ---
                 // BUY: Sell house, pay off remaining loan, pay taxes/fees
-                let sellBrokerFee = houseVal * costSelling;
-                let sellTax = 0;
-                if (applyCapGains) {
-                    let profit = houseVal - targetPrice - sellBrokerFee;
-                    if (profit > 0 && houseVal > 1200000000) {
-                        let taxableRatio = (houseVal - 1200000000) / houseVal;
-                        sellTax = profit * taxableRatio * 0.20; // Simplified 20%
-                    }
-                } else {
-                     let profit = houseVal - targetPrice - sellBrokerFee;
-                     if (profit > 0) sellTax = profit * 0.20;
-                }
-
-                let finalBuyNW = houseVal + buy_Liquid - remainingLoan - sellBrokerFee - sellTax;
+                let finalSellingCost = calculateSellingCost(targetPrice, houseVal, applyCapGains, costSelling);
+                let finalBuyNW = houseVal + buy_Liquid - remainingLoan - finalSellingCost;
 
                 // RENT: Get deposit back, pay off jeonse loan
                 let finalRentNW = rent_Liquid + currentRentDeposit - currentJeonseLoan;
