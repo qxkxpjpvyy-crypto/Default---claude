@@ -1058,10 +1058,12 @@
                 let currentJeonseRate = jeonseRateBase;
 
                 let hasBought = false;
+                let actualPurchasePrice = 0;
                 let buy_Liquid = buy_NW;
 
                 if (buy_NW + loanAmount >= requiredCashForBuy) {
                     hasBought = true;
+                    actualPurchasePrice = targetPrice;
                     buy_Liquid = buy_NW + loanAmount - requiredCashForBuy;
                 } else {
                     buy_Liquid = buy_NW + currentJeonseLoan - currentRentDeposit; // Locked in rent initially
@@ -1164,6 +1166,7 @@
 
                         if (buy_Liquid + currentRentDeposit - currentJeonseLoan + currentLoanAmount >= requiredCashNow) {
                             hasBought = true;
+                            actualPurchasePrice = houseVal;
                             loanAmount = currentLoanAmount;
                             remainingLoan = loanAmount;
 
@@ -1220,7 +1223,7 @@
 
                 // --- End of Simulation Liquidation ---
                 // BUY: Sell house, pay off remaining loan, pay taxes/fees
-                let finalSellingCost = calculateSellingCost(targetPrice, houseVal, applyCapGains, costSelling);
+                let finalSellingCost = calculateSellingCost(actualPurchasePrice, houseVal, applyCapGains, costSelling);
                 let finalBuyNW = hasBought ? (houseVal + buy_Liquid - remainingLoan - finalSellingCost) : (buy_Liquid + currentRentDeposit - currentJeonseLoan);
 
                 // RENT: Get deposit back, pay off jeonse loan
