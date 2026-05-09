@@ -636,6 +636,7 @@
         <div class="right-col">
             <div class="panel">
                 <div class="panel-header">시뮬레이션 요약 (Summary)</div>
+                <div id="budget-warning" style="display: none; background-color: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid #ef4444; padding: 10px; border-radius: 8px; margin-bottom: 15px; font-size: 0.9rem;"></div>
                 <div id="summary-container">
                     <!-- 결과 요약 카드가 여기에 추가될 예정 -->
 
@@ -960,6 +961,76 @@
 
             const years = getVal('analysis-years');
             const simCount = getVal('sim-count');
+
+            // --- Budget Feasibility Check ---
+            let testLoanAmount = targetPrice * ltvRatio;
+            if (applyLTV) {
+                let maxLTV = targetPrice * 0.7;
+                if (testLoanAmount > maxLTV) testLoanAmount = maxLTV;
+                let monthlyMortgageRateTest = (getValFloat('mortgage-rate') / 100.0) / 12.0;
+                let totalMortgageMonthsTest = getVal('mortgage-term') * 12;
+                let maxYearlyPayment = pretaxIncomeBase * 0.40;
+                let pmtFactor = (monthlyMortgageRateTest * Math.pow(1 + monthlyMortgageRateTest, totalMortgageMonthsTest)) / (Math.pow(1 + monthlyMortgageRateTest, totalMortgageMonthsTest) - 1);
+                if (pmtFactor > 0) {
+                    let maxDSRLoan = (maxYearlyPayment / 12.0) / pmtFactor;
+                    if (testLoanAmount > maxDSRLoan) testLoanAmount = maxDSRLoan;
+                }
+            }
+
+            // Calculate upfront costs roughly to see if affordable
+            let testAcqTax = 0;
+            if (applyAcqTax) {
+                if (targetPrice <= 600000000) testAcqTax = targetPrice * 0.011;
+                else if (targetPrice <= 900000000) testAcqTax = targetPrice * (targetPrice * 2 / 300000000 - 3) * 0.01;
+                else testAcqTax = targetPrice * 0.033;
+            }
+            let testBuyCost = targetPrice * (getValFloat('cost-buying') / 100.0);
+            let totalBuyNeed = targetPrice + testAcqTax + testBuyCost;
+            let totalBuyAvailable = currentNW + testLoanAmount;
+
+            if (totalBuyAvailable < totalBuyNeed) {
+                document.getElementById('budget-warning').style.display = 'block';
+                document.getElementById('budget-warning').innerHTML = `[경고] 구매 시나리오 예산 부족<br>필요 자금: ` + formatMoney(totalBuyNeed) + `<br>조달 가능 금액: ` + formatMoney(totalBuyAvailable) + `<br>입력값을 수정해주세요.`;
+                // Clear charts
+                document.getElementById('prob-buy-better').innerText = '--%';
+                document.getElementById('median-buy').innerText = '--원';
+                document.getElementById('median-rent').innerText = '--원';
+                // Clear canvases
+                const pathCanvas = document.getElementById('path-chart');
+                const distCanvas = document.getElementById('dist-chart');
+                const quantCanvas = document.getElementById('quant-chart');
+                pathCanvas.getContext('2d').clearRect(0, 0, pathCanvas.width, pathCanvas.height);
+                distCanvas.getContext('2d').clearRect(0, 0, distCanvas.width, distCanvas.height);
+                quantCanvas.getContext('2d').clearRect(0, 0, quantCanvas.width, quantCanvas.height);
+                return;
+            } else {
+                document.getElementById('budget-warning').style.display = 'none';
+            }
+            let totalRentNeed = 0;
+            let totalRentAvailable = 0;
+            if (isJeonse) {
+                totalRentNeed = jeonseDeposit;
+                totalRentAvailable = currentNW + jeonseLoan;
+            } else {
+                totalRentNeed = monthlyDeposit;
+                totalRentAvailable = currentNW; // Usually no loan for monthly deposit in this simplified model, but could be
+            }
+
+            if (totalRentAvailable < totalRentNeed) {
+                document.getElementById('budget-warning').style.display = 'block';
+                document.getElementById('budget-warning').innerHTML = `[경고] 임대 시나리오 예산 부족<br>필요 보증금: ` + formatMoney(totalRentNeed) + `<br>조달 가능 금액: ` + formatMoney(totalRentAvailable) + `<br>입력값을 수정해주세요.`;
+                document.getElementById('prob-buy-better').innerText = '--%';
+                document.getElementById('median-buy').innerText = '--원';
+                document.getElementById('median-rent').innerText = '--원';
+                const pathCanvas = document.getElementById('path-chart');
+                const distCanvas = document.getElementById('dist-chart');
+                const quantCanvas = document.getElementById('quant-chart');
+                pathCanvas.getContext('2d').clearRect(0, 0, pathCanvas.width, pathCanvas.height);
+                distCanvas.getContext('2d').clearRect(0, 0, distCanvas.width, distCanvas.height);
+                quantCanvas.getContext('2d').clearRect(0, 0, quantCanvas.width, quantCanvas.height);
+                return;
+            }
+
 
 
             let results = {
